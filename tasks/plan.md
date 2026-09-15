@@ -55,17 +55,17 @@ Confirmé via `/interview-me` (voir résumé ci-dessous) puis vérifié par insp
 
 ### Phase 1 : Extraction augmentée (types + regex)
 
-- [ ] **Task 1** : Types storage (`src/types.ts`) — ajouter `StorageExtractedValues` (extends `ExtractedValues` + `versStockageMwh: string`, `versStockagePct: number`, `depuisStockageMwh: string`, `depuisStockagePct: number`) et `StorageSlideValues` (extends `StorageExtractedValues` + `puissanceInstallee: number`, `rangees: number`, `tauxAutoconsommationAffichage: string`, `tauxAutoproductionStockage: number`). `ExtractedValues`/`SlideValues` inchangés.
-- [ ] **Task 2** : Nouveaux extracteurs regex (`src/pdf/extractValues.ts`) — `extractVersStockageMwh`, `extractVersStockagePct`, `extractDepuisStockageMwh`, `extractDepuisStockagePct` (même style fail-fast que l'existant), + `extractFromPdfTextStorage(page1Text, page2Text): StorageExtractedValues` qui combine `extractFromPdfText(...)` (réutilisé tel quel) avec les 4 nouveaux champs.
+- [x] **Task 1** : Types storage (`src/types.ts`) — ajouter `StorageExtractedValues` (extends `ExtractedValues` + `versStockageMwh: string`, `versStockagePct: number`, `depuisStockageMwh: string`, `depuisStockagePct: number`) et `StorageSlideValues` (extends `StorageExtractedValues` + `puissanceInstallee: number`, `rangees: number`, `tauxAutoconsommationAffichage: string`, `tauxAutoproductionStockage: number`). `ExtractedValues`/`SlideValues` inchangés.
+- [x] **Task 2** : Nouveaux extracteurs regex (`src/pdf/extractValues.ts`) — `extractVersStockageMwh`, `extractVersStockagePct`, `extractDepuisStockageMwh`, `extractDepuisStockagePct` (même style fail-fast que l'existant), + `extractFromPdfTextStorage(page1Text, page2Text): StorageExtractedValues` qui combine `extractFromPdfText(...)` (réutilisé tel quel) avec les 4 nouveaux champs.
 
 **Acceptance criteria (Phase 1) :**
-- [ ] Sur le texte réel des pages 1-2 de `D_26_1223_Intermarche_Rixhiem_3_Omb_avec_stockage_V2.pdf` : `versStockageMwh="93,88"`, `versStockagePct=27`, `depuisStockageMwh="91,64"`, `depuisStockagePct=14` (+ les champs hérités : modules=744, production="343,74", ratio="76", tauxAutoconsommation=72, surplusProduction=1, tauxAutoproduction=38, productionTotaleMwh="344,98", consommationTotaleMwh="658,15", versBatimentMwh="247,42", versReseauMwh="3,20", depuisPvMwh="247,42", duReseauMwh="316,11")
-- [ ] Une regex qui ne matche rien lève une erreur explicite nommant le champ
-- [ ] Aucune régression sur `extractFromPdfText` existant (tests sans-stockage inchangés)
+- [x] Sur le texte réel des pages 1-2 de `D_26_1223_Intermarche_Rixhiem_3_Omb_avec_stockage_V2.pdf` : `versStockageMwh="93,88"`, `versStockagePct=27`, `depuisStockageMwh="91,64"`, `depuisStockagePct=14` (+ les champs hérités : modules=744, production="343,74", ratio="76", tauxAutoconsommation=72, surplusProduction=1, tauxAutoproduction=38, productionTotaleMwh="344,98", consommationTotaleMwh="658,15", versBatimentMwh="247,42", versReseauMwh="3,20", depuisPvMwh="247,42", duReseauMwh="316,11")
+- [x] Une regex qui ne matche rien lève une erreur explicite nommant le champ
+- [x] Aucune régression sur `extractFromPdfText` existant (tests sans-stockage inchangés)
 
 **Verification :**
-- [ ] Tests : `npm test` (nouveau `tests/pdf/extractValues.storage.test.ts` + tests existants toujours verts)
-- [ ] Build : `npm run build`
+- [x] Tests : `npm test` (nouveau `tests/pdf/extractValues.storage.test.ts` + tests existants toujours verts)
+- [x] Build : `npm run build`
 
 **Dependencies :** Aucune
 
@@ -76,27 +76,27 @@ Confirmé via `/interview-me` (voir résumé ci-dessous) puis vérifié par insp
 ---
 
 ### Checkpoint 1 : Extraction
-- [ ] `npm test` passe entièrement (existants + nouveaux)
-- [ ] Les 4 nouvelles valeurs + les valeurs héritées correspondent exactement aux valeurs vérifiées ci-dessus
-- [ ] Revue avec l'utilisateur avant de continuer
+- [x] `npm test` passe entièrement (existants + nouveaux)
+- [x] Les 4 nouvelles valeurs + les valeurs héritées correspondent exactement aux valeurs vérifiées ci-dessus
+- [x] Revue avec l'utilisateur avant de continuer
 
 ---
 
 ### Phase 2 : Calcul des valeurs dérivées
 
-- [ ] **Task 3** : Fonctions de calcul storage (`src/calc.ts`) — `tauxAutoconsommationAffichage(tauxAutoconsommation: number, versStockagePct: number): string` (total = somme ; si `total >= 95`, retourne `"+95"` ; sinon `String(total)`) ; `tauxAutoproductionStockage(tauxAutoproduction: number, depuisStockagePct: number): number` (somme simple) ; `buildStorageValues(extracted: StorageExtractedValues, rangees: number): StorageSlideValues` (assemble `puissanceInstallee` via la fonction existante `puissanceInstallee()` réutilisée telle quelle + les 2 valeurs dérivées ci-dessus).
+- [x] **Task 3** : Fonctions de calcul storage (`src/calc.ts`) — `tauxAutoconsommationAffichage(tauxAutoconsommation: number, versStockagePct: number): string` (total = somme ; si `total >= 95`, retourne `"+95"` ; sinon `String(total)`) ; `tauxAutoproductionStockage(tauxAutoproduction: number, depuisStockagePct: number): number` (somme simple) ; `buildStorageValues(extracted: StorageExtractedValues, rangees: number): StorageSlideValues` (assemble `puissanceInstallee` via la fonction existante `puissanceInstallee()` réutilisée telle quelle + les 2 valeurs dérivées ci-dessus).
 
 **Acceptance criteria :**
-- [ ] `tauxAutoconsommationAffichage(72, 27)` === `"+95"` (99 ≥ 95)
-- [ ] `tauxAutoconsommationAffichage(50, 30)` === `"80"` (80 < 95, cas limite à couvrir même s'il n'apparaît pas dans la fixture actuelle)
-- [ ] `tauxAutoconsommationAffichage(60, 40)` === `"+95"` (100, cas de dépassement par arrondi)
-- [ ] `tauxAutoproductionStockage(38, 14)` === `52`
-- [ ] `buildStorageValues(...)` sur les valeurs extraites de la fixture réelle produit `puissanceInstallee=350` (744×470/1000=349,68→ceil=350), `tauxAutoconsommationAffichage="+95"`, `tauxAutoproductionStockage=52`
-- [ ] Aucune régression sur `puissanceInstallee`/`buildValues` existants
+- [x] `tauxAutoconsommationAffichage(72, 27)` === `"+95"` (99 ≥ 95)
+- [x] `tauxAutoconsommationAffichage(50, 30)` === `"80"` (80 < 95, cas limite à couvrir même s'il n'apparaît pas dans la fixture actuelle)
+- [x] `tauxAutoconsommationAffichage(60, 40)` === `"+95"` (100, cas de dépassement par arrondi)
+- [x] `tauxAutoproductionStockage(38, 14)` === `52`
+- [x] `buildStorageValues(...)` sur les valeurs extraites de la fixture réelle produit `puissanceInstallee=350` (744×470/1000=349,68→ceil=350), `tauxAutoconsommationAffichage="+95"`, `tauxAutoproductionStockage=52`
+- [x] Aucune régression sur `puissanceInstallee`/`buildValues` existants
 
 **Verification :**
-- [ ] Tests : `npm test` (nouveau `tests/calc.storage.test.ts`)
-- [ ] Build : `npm run build`
+- [x] Tests : `npm test` (nouveau `tests/calc.storage.test.ts`)
+- [x] Build : `npm run build`
 
 **Dependencies :** Task 1, Task 2
 
@@ -108,17 +108,17 @@ Confirmé via `/interview-me` (voir résumé ci-dessous) puis vérifié par insp
 
 ### Phase 3 : Table de remplacement texte slide 2 (storage)
 
-- [ ] **Task 4** : `src/pptx/slide2MapStorage.ts` — `buildSlide2ReplacementsStorage(values: StorageSlideValues): Map<string,string>`, 9 correspondances exactes de run listées dans "Faits vérifiés" ci-dessus (titre avec puissance, "350 kWc", "744", "347 760 kWh", "77,0 %", "Taux d'autoconsommation : +95%" → utilise `tauxAutoconsommationAffichage` tel quel comme valeur insérée sans `+` additionnel si non plafonné, "+95 % de la production..." idem, "Taux d'autoproduction : 52%" → `tauxAutoproductionStockage`, "52 % de vos besoins...").
+- [x] **Task 4** : `src/pptx/slide2MapStorage.ts` — `buildSlide2ReplacementsStorage(values: StorageSlideValues): Map<string,string>`, 9 correspondances exactes de run listées dans "Faits vérifiés" ci-dessus (titre avec puissance, "350 kWc", "744", "347 760 kWh", "77,0 %", "Taux d'autoconsommation : +95%" → utilise `tauxAutoconsommationAffichage` tel quel comme valeur insérée sans `+` additionnel si non plafonné, "+95 % de la production..." idem, "Taux d'autoproduction : 52%" → `tauxAutoproductionStockage`, "52 % de vos besoins...").
 
 **Acceptance criteria :**
-- [ ] Les 9 clés correspondent exactement (apostrophe `’`, espaces) aux `<a:t>` réels de `slide2.xml` du template storage (vérifié par un test qui dézippe la fixture réelle, comme `tests/pptx/slide2Map.test.ts` existant)
-- [ ] Avec les valeurs de la fixture réelle (`tauxAutoconsommationAffichage="+95"`, `tauxAutoproductionStockage=52`), la map produit `"Taux d’autoconsommation : +95%"` (identique au défaut, cas plafonné) et `"Taux d’autoproduction : 52%"`
-- [ ] Avec une valeur `tauxAutoconsommationAffichage="80"` (cas non plafonné, test synthétique), la map produit `"Taux d’autoconsommation : 80%"` (pas de `+`)
-- [ ] Aucun texte "surplus" recherché ou produit (n'existe pas dans ce template)
+- [x] Les 9 clés correspondent exactement (apostrophe `’`, espaces) aux `<a:t>` réels de `slide2.xml` du template storage (vérifié par un test qui dézippe la fixture réelle, comme `tests/pptx/slide2Map.test.ts` existant)
+- [x] Avec les valeurs de la fixture réelle (`tauxAutoconsommationAffichage="+95"`, `tauxAutoproductionStockage=52`), la map produit `"Taux d’autoconsommation : +95%"` (identique au défaut, cas plafonné) et `"Taux d’autoproduction : 52%"`
+- [x] Avec une valeur `tauxAutoconsommationAffichage="80"` (cas non plafonné, test synthétique), la map produit `"Taux d’autoconsommation : 80%"` (pas de `+`)
+- [x] Aucun texte "surplus" recherché ou produit (n'existe pas dans ce template)
 
 **Verification :**
-- [ ] Tests : `npm test` (nouveau `tests/pptx/slide2MapStorage.test.ts`, même style que `slide2Map.test.ts`)
-- [ ] Build : `npm run build`
+- [x] Tests : `npm test` (nouveau `tests/pptx/slide2MapStorage.test.ts`, même style que `slide2Map.test.ts`)
+- [x] Build : `npm run build`
 
 **Dependencies :** Task 3
 
@@ -129,27 +129,27 @@ Confirmé via `/interview-me` (voir résumé ci-dessous) puis vérifié par insp
 ---
 
 ### Checkpoint 2 : Textes
-- [ ] `npm test` passe entièrement
-- [ ] Génération d'un remplacement de test sur `slide1.xml`/`slide2.xml` du template storage réel (via `replaceRuns` existant + les deux maps) : tous les remplacements trouvés, aucun `missing`
-- [ ] Revue avec l'utilisateur avant de continuer
+- [x] `npm test` passe entièrement
+- [x] Génération d'un remplacement de test sur `slide1.xml`/`slide2.xml` du template storage réel (via `replaceRuns` existant + les deux maps) : tous les remplacements trouvés, aucun `missing`
+- [x] Revue avec l'utilisateur avant de continuer
 
 ---
 
 ### Phase 4 : Graphique annuel à 3 segments
 
-- [ ] **Task 5** : Refactor interne de `src/chart/annualResultsChart.ts` — remplacer le tuple `segments: [Segment, Segment]` par `segments: Segment[]` dans `Row`, extraire le rendu (boucle segments empilés + légende) dans une fonction interne générique acceptant `rows: [Row, Row]` et un `frameRatio: number` paramétrable (au lieu de la constante `FRAME_RATIO` figée). `renderAnnualResultsChart` (export existant) construit ses 2 lignes à 2 segments comme aujourd'hui et appelle le moteur générique avec le ratio sans-stockage par défaut — **signature et comportement inchangés**.
-- [ ] **Task 6** : Échantillonnage des couleurs réelles du graphique storage — inspecter le contenu vectoriel de la page 2 du PDF storage (via `pdfjs-dist`, operator list, même méthode que le commit "Match chart text color...") pour déterminer les couleurs "Vers le stockage" et "Depuis le stockage". Documenter les valeurs hex trouvées en commentaire (comme `PROD_GREEN` etc. existants).
-- [ ] **Task 7** : `renderAnnualResultsChartStorage(values: StorageAnnualResultsChartValues, frameRatio?: number): Buffer` (nouvel export dans `annualResultsChart.ts`) — construit 2 lignes à 3 segments (Production : bâtiment/stockage/réseau ; Consommation : PV/stockage/réseau) avec les couleurs de Task 6, appelle le même moteur générique de Task 5, ratio par défaut = celui du cadre storage (10820400/2493845).
+- [x] **Task 5** : Refactor interne de `src/chart/annualResultsChart.ts` — remplacer le tuple `segments: [Segment, Segment]` par `segments: Segment[]` dans `Row`, extraire le rendu (boucle segments empilés + légende) dans une fonction interne générique acceptant `rows: [Row, Row]` et un `frameRatio: number` paramétrable (au lieu de la constante `FRAME_RATIO` figée). `renderAnnualResultsChart` (export existant) construit ses 2 lignes à 2 segments comme aujourd'hui et appelle le moteur générique avec le ratio sans-stockage par défaut — **signature et comportement inchangés**.
+- [x] **Task 6** : Échantillonnage des couleurs réelles du graphique storage — inspecter le contenu vectoriel de la page 2 du PDF storage (via `pdfjs-dist`, operator list, même méthode que le commit "Match chart text color...") pour déterminer les couleurs "Vers le stockage" et "Depuis le stockage". Documenter les valeurs hex trouvées en commentaire (comme `PROD_GREEN` etc. existants).
+- [x] **Task 7** : `renderAnnualResultsChartStorage(values: StorageAnnualResultsChartValues, frameRatio?: number): Buffer` (nouvel export dans `annualResultsChart.ts`) — construit 2 lignes à 3 segments (Production : bâtiment/stockage/réseau ; Consommation : PV/stockage/réseau) avec les couleurs de Task 6, appelle le même moteur générique de Task 5, ratio par défaut = celui du cadre storage (10820400/2493845).
 
 **Acceptance criteria :**
-- [ ] `renderAnnualResultsChart(VALUES)` (2 segments, existant) produit un PNG strictement visuellement équivalent à avant (test existant `tests/chart/annualResultsChart.test.ts` passe sans modification)
-- [ ] `renderAnnualResultsChartStorage(values)` produit un PNG dont le ratio largeur/hauteur correspond au cadre storage (≈4,339), avec 3 segments visibles par barre, longueur totale des barres toujours proportionnelle au MWh (Consommation ≈ 658/345 ≈ 1,9× Production)
-- [ ] Les 3 segments de chaque barre utilisent des couleurs visuellement distinctes (test de présence de ≥3 couleurs de remplissage distinctes sur chaque ligne, en plus du fond)
+- [x] `renderAnnualResultsChart(VALUES)` (2 segments, existant) produit un PNG strictement visuellement équivalent à avant (test existant `tests/chart/annualResultsChart.test.ts` passe sans modification)
+- [x] `renderAnnualResultsChartStorage(values)` produit un PNG dont le ratio largeur/hauteur correspond au cadre storage (≈4,339), avec 3 segments visibles par barre, longueur totale des barres toujours proportionnelle au MWh (Consommation ≈ 658/345 ≈ 1,9× Production)
+- [x] Les 3 segments de chaque barre utilisent des couleurs visuellement distinctes (test de présence de ≥3 couleurs de remplissage distinctes sur chaque ligne, en plus du fond)
 
 **Verification :**
-- [ ] Tests : `npm test` (existant `tests/chart/annualResultsChart.test.ts` inchangé et vert + nouveau `tests/chart/annualResultsChartStorage.test.ts`)
-- [ ] Build : `npm run build`
-- [ ] Manuel : ouvrir le PNG généré pour le cas storage et vérifier visuellement les 3 segments + légende
+- [x] Tests : `npm test` (existant `tests/chart/annualResultsChart.test.ts` inchangé et vert + nouveau `tests/chart/annualResultsChartStorage.test.ts`)
+- [x] Build : `npm run build`
+- [x] Manuel : ouvrir le PNG généré pour le cas storage et vérifier visuellement les 3 segments + légende
 
 **Dependencies :** Task 3 (pour les types de valeurs d'entrée)
 
@@ -160,23 +160,23 @@ Confirmé via `/interview-me` (voir résumé ci-dessous) puis vérifié par insp
 ---
 
 ### Checkpoint 3 : Graphique
-- [ ] `npm test` passe entièrement, y compris le test de non-régression du graphique sans-stockage
-- [ ] PNG storage vérifié visuellement (3 segments, bon ratio, bonnes couleurs)
-- [ ] Revue avec l'utilisateur avant de continuer
+- [x] `npm test` passe entièrement, y compris le test de non-régression du graphique sans-stockage
+- [x] PNG storage vérifié visuellement (3 segments, bon ratio, bonnes couleurs)
+- [x] Revue avec l'utilisateur avant de continuer
 
 ---
 
 ### Phase 5 : Remplacement d'image générique
 
-- [ ] **Task 8** : Généraliser `src/pptx/replaceImage.ts` — ajouter un paramètre optionnel `imageEntry: string` à `replaceChartImage(zip, newImageBuffer, imageEntry = "ppt/media/image8.png")`. Comportement (reset `srcRect` à 0, remplacement des octets) inchangé. Aucune modification de la signature d'appel existante (paramètre optionnel avec défaut = comportement actuel).
+- [x] **Task 8** : Généraliser `src/pptx/replaceImage.ts` — ajouter un paramètre optionnel `imageEntry: string` à `replaceChartImage(zip, newImageBuffer, imageEntry = "ppt/media/image8.png")`. Comportement (reset `srcRect` à 0, remplacement des octets) inchangé. Aucune modification de la signature d'appel existante (paramètre optionnel avec défaut = comportement actuel).
 
 **Acceptance criteria :**
-- [ ] Appel sans 3ᵉ argument (existant) : comportement strictement identique, test existant `tests/pptx/replaceImage.test.ts` inchangé et vert
-- [ ] Appel avec `imageEntry="ppt/media/image5.png"` sur le template storage réel : l'image `image5.png` est remplacée, `srcRect` reste `b="0" l="0" r="0" t="0"` (déjà le cas), `<a:off>`/`<a:ext>` inchangés, toutes les autres entrées du zip identiques octet pour octet
+- [x] Appel sans 3ᵉ argument (existant) : comportement strictement identique, test existant `tests/pptx/replaceImage.test.ts` inchangé et vert
+- [x] Appel avec `imageEntry="ppt/media/image5.png"` sur le template storage réel : l'image `image5.png` est remplacée, `srcRect` reste `b="0" l="0" r="0" t="0"` (déjà le cas), `<a:off>`/`<a:ext>` inchangés, toutes les autres entrées du zip identiques octet pour octet
 
 **Verification :**
-- [ ] Tests : `npm test` (existant inchangé + nouveau cas storage dans `tests/pptx/replaceImage.test.ts` ou fichier dédié)
-- [ ] Build : `npm run build`
+- [x] Tests : `npm test` (existant inchangé + nouveau cas storage dans `tests/pptx/replaceImage.test.ts` ou fichier dédié)
+- [x] Build : `npm run build`
 
 **Dependencies :** Aucune (indépendant, peut être fait en parallèle des phases 1-4)
 
@@ -188,17 +188,17 @@ Confirmé via `/interview-me` (voir résumé ci-dessous) puis vérifié par insp
 
 ### Phase 6 : CLI et orchestration bout-en-bout
 
-- [ ] **Task 9** : `src/cli.ts` — ajouter le flag `--scenario` (valeurs autorisées : `sans-stockage` [défaut], `stockage` ; erreur explicite si autre valeur), une table de dispatch par scénario (template pptx, fonction d'extraction, fonction de calcul, table de remplacement slide 2, fonction de rendu du graphique, entrée image), orchestration identique à l'existant sinon (slide 1 toujours via `buildSlide1Replacements`, réutilisé pour les deux scénarios).
+- [x] **Task 9** : `src/cli.ts` — ajouter le flag `--scenario` (valeurs autorisées : `sans-stockage` [défaut], `stockage` ; erreur explicite si autre valeur), une table de dispatch par scénario (template pptx, fonction d'extraction, fonction de calcul, table de remplacement slide 2, fonction de rendu du graphique, entrée image), orchestration identique à l'existant sinon (slide 1 toujours via `buildSlide1Replacements`, réutilisé pour les deux scénarios).
 
 **Acceptance criteria :**
-- [ ] `node dist/cli.js --pdf <pdf sans-stockage> --rangees 3` (sans `--scenario`, ou `--scenario sans-stockage`) : comportement strictement identique à avant (non-régression)
-- [ ] `node dist/cli.js --pdf test/data/D_26_1223_Intermarche_Rixhiem_3_Omb_avec_stockage_V2.pdf --rangees <n> --scenario stockage` produit un pptx sans erreur
-- [ ] `--scenario` avec une valeur invalide → message d'erreur clair listant les valeurs autorisées
-- [ ] La sortie console liste les valeurs extraites/calculées pour le scénario actif (y compris `tauxAutoconsommationAffichage` et `tauxAutoproductionStockage` pour le storage)
+- [x] `node dist/cli.js --pdf <pdf sans-stockage> --rangees 3` (sans `--scenario`, ou `--scenario sans-stockage`) : comportement strictement identique à avant (non-régression)
+- [x] `node dist/cli.js --pdf test/data/D_26_1223_Intermarche_Rixhiem_3_Omb_avec_stockage_V2.pdf --rangees <n> --scenario stockage` produit un pptx sans erreur
+- [x] `--scenario` avec une valeur invalide → message d'erreur clair listant les valeurs autorisées
+- [x] La sortie console liste les valeurs extraites/calculées pour le scénario actif (y compris `tauxAutoconsommationAffichage` et `tauxAutoproductionStockage` pour le storage)
 
 **Verification :**
-- [ ] Build : `npm run build`
-- [ ] Manuel : exécution complète sur les deux fixtures réelles
+- [x] Build : `npm run build`
+- [x] Manuel : exécution complète sur les deux fixtures réelles
 
 **Dependencies :** Task 2, Task 3, Task 4, Task 7, Task 8
 
@@ -210,18 +210,18 @@ Confirmé via `/interview-me` (voir résumé ci-dessous) puis vérifié par insp
 
 ### Phase 7 : Vérification bout-en-bout et documentation
 
-- [ ] **Task 10** : Exécution bout-en-bout sur la fixture storage réelle, ouverture du pptx généré (PowerPoint/LibreOffice/Google Slides), vérification manuelle de chaque valeur (slide 1 : puissance/rangées ; slide 2 : puissance, modules, production, ratio, autoconsommation "+95", autoproduction "52", graphique 3 segments), et confirmation que **la slide 3 est strictement identique à l'originale** (hash de l'entrée `ppt/slides/slide3.xml` et de `ppt/media/image11.png` inchangés).
-- [ ] **Task 11** : Mise à jour de `README.md` (nouveau flag `--scenario`, exemple de commande pour le scénario storage, description des valeurs "+95"/combinées).
+- [x] **Task 10** : Exécution bout-en-bout sur la fixture storage réelle, ouverture du pptx généré (PowerPoint/LibreOffice/Google Slides), vérification manuelle de chaque valeur (slide 1 : puissance/rangées ; slide 2 : puissance, modules, production, ratio, autoconsommation "+95", autoproduction "52", graphique 3 segments), et confirmation que **la slide 3 est strictement identique à l'originale** (hash de l'entrée `ppt/slides/slide3.xml` et de `ppt/media/image11.png` inchangés).
+- [x] **Task 11** : Mise à jour de `README.md` (nouveau flag `--scenario`, exemple de commande pour le scénario storage, description des valeurs "+95"/combinées).
 
 **Acceptance criteria :**
-- [ ] Toutes les valeurs listées dans la demande initiale sont correctement remplacées dans le pptx généré storage
-- [ ] `ppt/slides/slide3.xml` et tous les médias de la slide 3 sont identiques octet pour octet à l'original dans le fichier de sortie
-- [ ] Mise en forme (polices, couleurs, layout) visuellement identique à l'original partout ailleurs
-- [ ] `README.md` documente les deux scénarios
+- [x] Toutes les valeurs listées dans la demande initiale sont correctement remplacées dans le pptx généré storage
+- [x] `ppt/slides/slide3.xml` et tous les médias de la slide 3 sont identiques octet pour octet à l'original dans le fichier de sortie
+- [x] Mise en forme (polices, couleurs, layout) visuellement identique à l'original partout ailleurs
+- [x] `README.md` documente les deux scénarios
 
 **Verification :**
-- [ ] Manuel : ouverture et inspection visuelle + comparaison de hash pour slide3/image11
-- [ ] `npm test` et `npm run build` passent
+- [x] Manuel : ouverture et inspection visuelle + comparaison de hash pour slide3/image11
+- [x] `npm test` et `npm run build` passent
 
 **Dependencies :** Task 9
 
@@ -232,10 +232,10 @@ Confirmé via `/interview-me` (voir résumé ci-dessous) puis vérifié par insp
 ---
 
 ### Checkpoint final
-- [ ] Toutes les acceptance criteria de toutes les tâches sont remplies
-- [ ] `npm test` et `npm run build` passent, y compris tous les tests existants du scénario sans-stockage (zéro régression)
-- [ ] `README.md` mis à jour
-- [ ] Prêt pour `/code-review-and-quality`, puis proposition de PR (selon les instructions du projet)
+- [x] Toutes les acceptance criteria de toutes les tâches sont remplies
+- [x] `npm test` et `npm run build` passent, y compris tous les tests existants du scénario sans-stockage (zéro régression)
+- [x] `README.md` mis à jour
+- [x] Prêt pour `/code-review-and-quality`, puis proposition de PR (selon les instructions du projet)
 
 ## Risks and Mitigations
 
