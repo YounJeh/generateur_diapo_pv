@@ -19,6 +19,11 @@ export interface Bounds {
 const TOP_ANCHOR = "RÉSULTATS DE CONSOMMATION";
 const BOTTOM_ANCHOR = "Énergie solaire";
 const PADDING = 12;
+// Marge supplémentaire à droite : le texte est redessiné avec une police
+// système de substitution (voir renderChart.ts) dont la largeur de
+// caractères diffère légèrement de la police intégrée au PDF — sans cette
+// marge, la fin des lignes de légende les plus longues peut être rognée.
+const RIGHT_PADDING_EXTRA = 20;
 
 interface PositionedItem {
   str: string;
@@ -79,7 +84,7 @@ export async function findChartBounds(page: PDFPageProxy): Promise<Bounds> {
   return {
     x0: Math.max(0, xLeft - PADDING),
     y0: Math.max(0, yBottom - PADDING),
-    x1: Math.min(viewport.width, xRight + PADDING),
+    x1: Math.min(viewport.width, xRight + PADDING + RIGHT_PADDING_EXTRA),
     y1: Math.min(viewport.height, yTop + PADDING),
   };
 }
