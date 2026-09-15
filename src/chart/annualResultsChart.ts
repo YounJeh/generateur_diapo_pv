@@ -2,14 +2,19 @@ import { createCanvas } from "canvas";
 import type { ExtractedValues } from "../types.js";
 
 /**
- * Ratio largeur/hauteur du cadre image de la slide 2 (`<a:ext>` dans
- * slide2.xml : cx=10718018, cy=2219711 EMU). L'image est étirée pour
- * remplir ce cadre (`<a:stretch/>`) : la générer à ce ratio évite toute
- * déformation visible une fois insérée dans le pptx.
+ * Ratio largeur/hauteur par défaut, celui du cadre image de la slide 2 du
+ * template sans stockage (`<a:ext>` dans slide2.xml : cx=10718018,
+ * cy=2219711 EMU). L'image est étirée pour remplir ce cadre
+ * (`<a:stretch/>`) : la générer à ce ratio évite toute déformation visible
+ * une fois insérée dans le pptx. Paramétrable (voir `renderAnnualResultsChart`)
+ * car le template "avec stockage" utilise un cadre de ratio différent.
  */
-const FRAME_RATIO = 10718018 / 2219711;
+const DEFAULT_FRAME_RATIO = 10718018 / 2219711;
 const WIDTH = 2344;
-const HEIGHT = Math.round(WIDTH / FRAME_RATIO);
+
+function heightForRatio(frameRatio: number): number {
+  return Math.round(WIDTH / frameRatio);
+}
 
 const SURFACE = "#fcfcfb";
 const INK = "#0b0b0b";
@@ -35,7 +40,8 @@ interface Segment {
 interface Row {
   label: string;
   total: number;
-  segments: [Segment, Segment];
+  /** Nombre variable de segments empilés (2 pour sans-stockage, 3 pour avec stockage). */
+  segments: Segment[];
 }
 
 type AnnualResultsChartValues = Pick<
@@ -124,19 +130,18 @@ function roundedRect(
 }
 
 /**
- * Dessine le graphique "RÉSULTATS DE CONSOMMATION ET DE PRODUCTION
- * ANNUELLES" (barres empilées, couleurs d'origine, longueur proportionnelle
- * au MWh — format retenu par l'utilisateur après comparaison de plusieurs
- * propositions). Remplace le crop du PDF source utilisé précédemment.
+ * Moteur de dessin générique : rend 2 lignes (Production / Consommation) à
+ * un nombre variable de segments par barre, à un ratio largeur/hauteur
+ * paramétrable. Partagé par `renderAnnualResultsChart` (2 segments) et
+ * `renderAnnualResultsChartStorage` (3 segments).
  */
-export function renderAnnualResultsChart(
-  values: AnnualResultsChartValues,
-): Buffer {
-  const canvas = createCanvas(WIDTH, HEIGHT);
+function drawChart(rows: [Row, Row], frameRatio: number): Buffer {
+  const height = heightForRatio(frameRatio);
+  const canvas = createCanvas(WIDTH, height);
   const ctx = canvas.getContext("2d");
 
   ctx.fillStyle = SURFACE;
-  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  ctx.fillRect(0, 0, WIDTH, height);
 
   ctx.fillStyle = INK_MUTED;
   ctx.font = "700 22px sans-serif";
@@ -144,7 +149,6 @@ export function renderAnnualResultsChart(
   ctx.textBaseline = "alphabetic";
   ctx.fillText("RÉSULTATS DE CONSOMMATION ET DE PRODUCTION ANNUELLES", 64, 58);
 
-  const rows = buildRows(values);
   const maxTotal = Math.max(rows[0].total, rows[1].total);
 
   const marginX = 64;
@@ -216,4 +220,17 @@ export function renderAnnualResultsChart(
   );
 
   return canvas.toBuffer("image/png");
+}
+
+/**
+ * Dessine le graphique "RÉSULTATS DE CONSOMMATION ET DE PRODUCTION
+ * ANNUELLES" (barres empilées, couleurs d'origine, longueur proportionnelle
+ * au MWh — format retenu par l'utilisateur après comparaison de plusieurs
+ * propositions). Remplace le crop du PDF source utilisé précédemment.
+ */
+export function renderAnnualResultsChart(
+  values: AnnualResultsChartValues,
+  frameRatio: number = DEFAULT_FRAME_RATIO,
+): Buffer {
+  return drawChart(buildRows(values), frameRatio);
 }
