@@ -1,5 +1,5 @@
 import { createCanvas } from "canvas";
-import type { ExtractedValues } from "../types.js";
+import type { ExtractedValues, StorageExtractedValues } from "../types.js";
 
 /**
  * Ratio largeur/hauteur par défaut, celui du cadre image de la slide 2 du
@@ -29,6 +29,20 @@ const PROD_GREEN = "#00e77f";
 const PROD_TEAL = "#00bbaa";
 const CONS_BLUE = "#6fa8ff";
 const CONS_ORANGE = "#ffb44c";
+
+// Couleurs du segment "stockage" (scénario avec stockage), échantillonnées
+// de la même façon sur le graphique vectoriel du rapport SolarEdge storage :
+// des teintes plus claires des couleurs "bâtiment"/"PV" ci-dessus (le PDF
+// source réutilise exactement PROD_GREEN/PROD_TEAL/CONS_BLUE/CONS_ORANGE
+// pour bâtiment/réseau/PV/réseau, seul le stockage a ses propres teintes).
+const PROD_STOCKAGE_GREEN = "#88ffbb";
+const CONS_STOCKAGE_BLUE = "#bbddff";
+
+/**
+ * Ratio largeur/hauteur du cadre image de la slide 2 du template "avec
+ * stockage" (`<a:ext>` : cx=10820400, cy=2493845 EMU).
+ */
+const STORAGE_FRAME_RATIO = 10820400 / 2493845;
 
 interface Segment {
   label: string;
@@ -98,6 +112,78 @@ function buildRows(values: AnnualResultsChartValues): [Row, Row] {
           value: parseFr(values.depuisPvMwh),
           pct: values.tauxAutoproduction,
           color: CONS_BLUE,
+        },
+        {
+          label: "Du réseau",
+          value: parseFr(values.duReseauMwh),
+          pct: duReseauPct,
+          color: CONS_ORANGE,
+        },
+      ],
+    },
+  ];
+}
+
+type StorageAnnualResultsChartValues = Pick<
+  StorageExtractedValues,
+  | "productionTotaleMwh"
+  | "consommationTotaleMwh"
+  | "versBatimentMwh"
+  | "versStockageMwh"
+  | "versReseauMwh"
+  | "depuisPvMwh"
+  | "depuisStockageMwh"
+  | "duReseauMwh"
+  | "tauxAutoconsommation"
+  | "versStockagePct"
+  | "surplusProduction"
+  | "tauxAutoproduction"
+  | "depuisStockagePct"
+>;
+
+function buildStorageRows(values: StorageAnnualResultsChartValues): [Row, Row] {
+  const duReseauPct =
+    100 - values.tauxAutoproduction - values.depuisStockagePct;
+  return [
+    {
+      label: "Production",
+      total: parseFr(values.productionTotaleMwh),
+      segments: [
+        {
+          label: "Vers le bâtiment",
+          value: parseFr(values.versBatimentMwh),
+          pct: values.tauxAutoconsommation,
+          color: PROD_GREEN,
+        },
+        {
+          label: "Vers le stockage",
+          value: parseFr(values.versStockageMwh),
+          pct: values.versStockagePct,
+          color: PROD_STOCKAGE_GREEN,
+        },
+        {
+          label: "Vers le réseau",
+          value: parseFr(values.versReseauMwh),
+          pct: values.surplusProduction,
+          color: PROD_TEAL,
+        },
+      ],
+    },
+    {
+      label: "Consommation",
+      total: parseFr(values.consommationTotaleMwh),
+      segments: [
+        {
+          label: "Depuis le PV",
+          value: parseFr(values.depuisPvMwh),
+          pct: values.tauxAutoproduction,
+          color: CONS_BLUE,
+        },
+        {
+          label: "Depuis le stockage",
+          value: parseFr(values.depuisStockageMwh),
+          pct: values.depuisStockagePct,
+          color: CONS_STOCKAGE_BLUE,
         },
         {
           label: "Du réseau",
@@ -233,4 +319,17 @@ export function renderAnnualResultsChart(
   frameRatio: number = DEFAULT_FRAME_RATIO,
 ): Buffer {
   return drawChart(buildRows(values), frameRatio);
+}
+
+/**
+ * Variante du graphique "RÉSULTATS DE CONSOMMATION ET DE PRODUCTION
+ * ANNUELLES" pour le scénario "avec stockage" : 3 segments par barre
+ * (bâtiment/stockage/réseau ; PV/stockage/réseau), même style visuel,
+ * ratio de cadre par défaut = celui du template storage.
+ */
+export function renderAnnualResultsChartStorage(
+  values: StorageAnnualResultsChartValues,
+  frameRatio: number = STORAGE_FRAME_RATIO,
+): Buffer {
+  return drawChart(buildStorageRows(values), frameRatio);
 }
