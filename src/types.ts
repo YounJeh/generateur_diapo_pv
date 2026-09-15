@@ -12,6 +12,24 @@ export interface ExtractedValues {
   surplusProduction: number;
   /** Taux d'autoproduction en % (page 2, "Depuis le PV ... (X%)"). */
   tauxAutoproduction: number;
+  /**
+   * Total MWh du graphique "RÉSULTATS DE CONSOMMATION ET DE PRODUCTION
+   * ANNUELLES" (page 2, libellé "Production ... MWh"). Distinct de
+   * `productionAnnuelleMwh` (page 1, "D'Énergie Annuelle") : les deux
+   * valeurs sources diffèrent légèrement dans le rapport (arrondis
+   * différents) ; chacune est gardée telle quelle dans son propre contexte.
+   */
+  productionTotaleMwh: string;
+  /** Total MWh consommés (page 2, "Consommation ... MWh"). */
+  consommationTotaleMwh: string;
+  /** MWh produits envoyés vers le bâtiment (page 2, autoconsommation). */
+  versBatimentMwh: string;
+  /** MWh produits envoyés vers le réseau (page 2, surplus). */
+  versReseauMwh: string;
+  /** MWh consommés depuis le PV (page 2, autoproduction). */
+  depuisPvMwh: string;
+  /** MWh consommés depuis le réseau (page 2). */
+  duReseauMwh: string;
 }
 
 /**

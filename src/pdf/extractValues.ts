@@ -131,5 +131,11 @@ export function extractFromPdfText(
     tauxAutoconsommation: extractTauxAutoconsommation(page2Text),
     surplusProduction: extractSurplusProduction(page2Text),
     tauxAutoproduction: extractTauxAutoproduction(page2Text),
+    productionTotaleMwh: extractProductionTotaleMwh(page2Text),
+    consommationTotaleMwh: extractConsommationTotaleMwh(page2Text),
+    versBatimentMwh: extractVersBatimentMwh(page2Text),
+    versReseauMwh: extractVersReseauMwh(page2Text),
+    depuisPvMwh: extractDepuisPvMwh(page2Text),
+    duReseauMwh: extractDuReseauMwh(page2Text),
   };
 }

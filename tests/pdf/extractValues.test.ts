@@ -19,7 +19,7 @@ import {
 const FIXTURE_PDF = "test/data/Solar_Edge_ITM_Rixhiem_3_omb_V2.pdf";
 
 describe("extractValues against the real SolarEdge fixture", () => {
-  it("extracts all 6 fields with the expected values", async () => {
+  it("extracts all fields with the expected values", async () => {
     const [page1, page2] = await getPageTexts(FIXTURE_PDF, [1, 2]);
     const values = extractFromPdfText(page1, page2);
 
@@ -30,6 +30,12 @@ describe("extractValues against the real SolarEdge fixture", () => {
       tauxAutoconsommation: 71,
       surplusProduction: 29,
       tauxAutoproduction: 38,
+      productionTotaleMwh: "351,31",
+      consommationTotaleMwh: "656,65",
+      versBatimentMwh: "249,34",
+      versReseauMwh: "101,39",
+      depuisPvMwh: "249,34",
+      duReseauMwh: "407,31",
     });
   });
 
