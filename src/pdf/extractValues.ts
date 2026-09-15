@@ -1,4 +1,4 @@
-import type { ExtractedValues } from "../types.js";
+import type { ExtractedValues, StorageExtractedValues } from "../types.js";
 
 /** Réduit tous les espaces/retours à la ligne du texte pdfjs (un item par ligne) à un seul espace. */
 function normalize(text: string): string {
@@ -137,5 +137,56 @@ export function extractFromPdfText(
     versReseauMwh: extractVersReseauMwh(page2Text),
     depuisPvMwh: extractDepuisPvMwh(page2Text),
     duReseauMwh: extractDuReseauMwh(page2Text),
+  };
+}
+
+/** MWh produits envoyés vers le stockage (page 2, scénario avec stockage). */
+export function extractVersStockageMwh(page2Text: string): string {
+  return extract(
+    normalize(page2Text),
+    /Vers le stockage\s+(\d+,\d+)\s*MWh/i,
+    "MWh vers le stockage",
+  );
+}
+
+/** % de la production envoyé vers le stockage (page 2, scénario avec stockage). */
+export function extractVersStockagePct(page2Text: string): number {
+  const raw = extract(
+    normalize(page2Text),
+    /Vers le stockage[^)]*\((\d+)%\)/i,
+    "% vers le stockage",
+  );
+  return Number.parseInt(raw, 10);
+}
+
+/** MWh consommés depuis le stockage (page 2, scénario avec stockage). */
+export function extractDepuisStockageMwh(page2Text: string): string {
+  return extract(
+    normalize(page2Text),
+    /Depuis le stockage\s+(\d+,\d+)\s*MWh/i,
+    "MWh depuis le stockage",
+  );
+}
+
+/** % de la consommation couvert depuis le stockage (page 2, scénario avec stockage). */
+export function extractDepuisStockagePct(page2Text: string): number {
+  const raw = extract(
+    normalize(page2Text),
+    /Depuis le stockage[^)]*\((\d+)%\)/i,
+    "% depuis le stockage",
+  );
+  return Number.parseInt(raw, 10);
+}
+
+export function extractFromPdfTextStorage(
+  page1Text: string,
+  page2Text: string,
+): StorageExtractedValues {
+  return {
+    ...extractFromPdfText(page1Text, page2Text),
+    versStockageMwh: extractVersStockageMwh(page2Text),
+    versStockagePct: extractVersStockagePct(page2Text),
+    depuisStockageMwh: extractDepuisStockageMwh(page2Text),
+    depuisStockagePct: extractDepuisStockagePct(page2Text),
   };
 }
