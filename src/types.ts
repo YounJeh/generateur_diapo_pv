@@ -13,3 +13,15 @@ export interface ExtractedValues {
   /** Taux d'autoproduction en % (page 2, "Depuis le PV ... (X%)"). */
   tauxAutoproduction: number;
 }
+
+/**
+ * Valeurs complètes utilisées pour remplir le template pptx : les valeurs
+ * extraites du PDF, la puissance installée calculée, et le nombre de
+ * rangées (non extractible du PDF, fourni manuellement).
+ */
+export interface SlideValues extends ExtractedValues {
+  /** Puissance installée en kWc = nombre de modules x 470, arrondi à l'entier supérieur. */
+  puissanceInstallee: number;
+  /** Nombre de rangées d'ombrières, fourni manuellement (absent du texte du PDF). */
+  rangees: number;
+}
