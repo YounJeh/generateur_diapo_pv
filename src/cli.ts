@@ -2,11 +2,9 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { buildValues } from "./calc.js";
-import { openPdfPage } from "./pdf/document.js";
-import { findChartBounds } from "./pdf/chartBounds.js";
+import { renderAnnualResultsChart } from "./chart/annualResultsChart.js";
 import { extractFromPdfText } from "./pdf/extractValues.js";
 import { getPageTexts } from "./pdf/reader.js";
-import { renderChartImage } from "./pdf/renderChart.js";
 import { replaceChartImage } from "./pptx/replaceImage.js";
 import { replaceRuns } from "./pptx/replaceText.js";
 import { buildSlide1Replacements } from "./pptx/slide1Map.js";
@@ -18,7 +16,6 @@ import { getEntryText, openPptx, setEntryText, writePptx } from "./pptx/zip.js";
 
 const TEMPLATE_PPTX =
   "test/data/Scenario 1 sans stockage Projet_Ombriere_Rixhiem.pptx";
-const CHART_PAGE_NUMBER = 2;
 
 interface CliArgs {
   pdf: string;
@@ -108,9 +105,7 @@ async function run(argv: string[]): Promise<void> {
     `Laissé(s) inchangé(s) volontairement, hors périmètre : ${SLIDE2_OUT_OF_SCOPE_TEXTS.join(", ")}`,
   );
 
-  const page = await openPdfPage(pdf, CHART_PAGE_NUMBER);
-  const bounds = await findChartBounds(page);
-  const chartImage = await renderChartImage(pdf, CHART_PAGE_NUMBER, bounds);
+  const chartImage = renderAnnualResultsChart(values);
   replaceChartImage(zip, chartImage);
   console.log("Image du graphique (slide 2) remplacée.");
 
