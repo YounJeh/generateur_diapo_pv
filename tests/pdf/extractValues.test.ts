@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { getPageTexts } from "../../src/pdf/reader.js";
 import {
+  extractConsommationTotaleMwh,
+  extractDepuisPvMwh,
+  extractDuReseauMwh,
   extractFromPdfText,
   extractNombreModules,
   extractProductionAnnuelleMwh,
+  extractProductionTotaleMwh,
   extractRatioDePerformance,
   extractSurplusProduction,
   extractTauxAutoconsommation,
   extractTauxAutoproduction,
+  extractVersBatimentMwh,
+  extractVersReseauMwh,
 } from "../../src/pdf/extractValues.js";
 
 const FIXTURE_PDF = "test/data/Solar_Edge_ITM_Rixhiem_3_omb_V2.pdf";
@@ -36,6 +42,17 @@ describe("extractValues against the real SolarEdge fixture", () => {
     expect(extractTauxAutoconsommation(page2)).toBe(71);
     expect(extractSurplusProduction(page2)).toBe(29);
     expect(extractTauxAutoproduction(page2)).toBe(38);
+  });
+
+  it("extracts the absolute MWh breakdown from the annual results chart (page 2)", async () => {
+    const [, page2] = await getPageTexts(FIXTURE_PDF, [1, 2]);
+
+    expect(extractProductionTotaleMwh(page2)).toBe("351,31");
+    expect(extractConsommationTotaleMwh(page2)).toBe("656,65");
+    expect(extractVersBatimentMwh(page2)).toBe("249,34");
+    expect(extractVersReseauMwh(page2)).toBe("101,39");
+    expect(extractDepuisPvMwh(page2)).toBe("249,34");
+    expect(extractDuReseauMwh(page2)).toBe("407,31");
   });
 });
 

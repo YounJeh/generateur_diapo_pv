@@ -67,6 +67,59 @@ export function extractTauxAutoproduction(page2Text: string): number {
   return Number.parseInt(raw, 10);
 }
 
+/**
+ * Valeurs MWh absolues du graphique "RÉSULTATS DE CONSOMMATION ET DE
+ * PRODUCTION ANNUELLES" (page 2), en plus des pourcentages déjà extraits
+ * ci-dessus. Utilisées pour redessiner ce graphique (voir chart-candidates).
+ */
+export function extractProductionTotaleMwh(page2Text: string): string {
+  return extract(
+    normalize(page2Text),
+    /Production\s+(\d+,\d+)\s*MWh/i,
+    "production totale (page 2)",
+  );
+}
+
+export function extractConsommationTotaleMwh(page2Text: string): string {
+  return extract(
+    normalize(page2Text),
+    /Consommation\s+(\d+,\d+)\s*MWh/i,
+    "consommation totale",
+  );
+}
+
+export function extractVersBatimentMwh(page2Text: string): string {
+  return extract(
+    normalize(page2Text),
+    /Vers le b[âa]timent\s+(\d+,\d+)\s*MWh/i,
+    "MWh vers le bâtiment",
+  );
+}
+
+export function extractVersReseauMwh(page2Text: string): string {
+  return extract(
+    normalize(page2Text),
+    /Vers le r[ée]seau\s+(\d+,\d+)\s*MWh/i,
+    "MWh vers le réseau",
+  );
+}
+
+export function extractDepuisPvMwh(page2Text: string): string {
+  return extract(
+    normalize(page2Text),
+    /Depuis le PV\s+(\d+,\d+)\s*MWh/i,
+    "MWh depuis le PV",
+  );
+}
+
+export function extractDuReseauMwh(page2Text: string): string {
+  return extract(
+    normalize(page2Text),
+    /du r[ée]seau\s+(\d+,\d+)\s*MWh/i,
+    "MWh du réseau",
+  );
+}
+
 export function extractFromPdfText(
   page1Text: string,
   page2Text: string,
