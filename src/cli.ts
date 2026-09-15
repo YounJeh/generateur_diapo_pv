@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
-import { buildValues } from "./calc.js";
-import { renderAnnualResultsChart } from "./chart/annualResultsChart.js";
-import { extractFromPdfText } from "./pdf/extractValues.js";
+import { buildStorageValues, buildValues } from "./calc.js";
+import {
+  renderAnnualResultsChart,
+  renderAnnualResultsChartStorage,
+} from "./chart/annualResultsChart.js";
+import { extractFromPdfText, extractFromPdfTextStorage } from "./pdf/extractValues.js";
 import { getPageTexts } from "./pdf/reader.js";
 import { replaceChartImage } from "./pptx/replaceImage.js";
 import { replaceRuns } from "./pptx/replaceText.js";
@@ -12,19 +15,45 @@ import {
   SLIDE2_OUT_OF_SCOPE_TEXTS,
   buildSlide2Replacements,
 } from "./pptx/slide2Map.js";
+import { buildSlide2ReplacementsStorage } from "./pptx/slide2MapStorage.js";
 import { getEntryText, openPptx, setEntryText, writePptx } from "./pptx/zip.js";
 
-const TEMPLATE_PPTX =
-  "test/data/Scenario 1 sans stockage Projet_Ombriere_Rixhiem.pptx";
+type Scenario = "sans-stockage" | "stockage";
+
+const SCENARIOS: readonly Scenario[] = ["sans-stockage", "stockage"];
+
+const TEMPLATE_PPTX: Record<Scenario, string> = {
+  "sans-stockage":
+    "test/data/Scenario 1 sans stockage Projet_Ombriere_Rixhiem.pptx",
+  stockage: "test/data/scenario 1 avec stockage Projet_Ombriere_Rixhiem.pptx",
+};
+
+const CHART_IMAGE_ENTRY: Record<Scenario, string> = {
+  "sans-stockage": "ppt/media/image8.png",
+  stockage: "ppt/media/image5.png",
+};
 
 interface CliArgs {
   pdf: string;
   rangees: number;
   output: string;
+  scenario: Scenario;
 }
 
 function usage(): string {
-  return "Usage : --pdf <chemin du PDF SolarEdge> --rangees <nombre de rangées> [--output <chemin du pptx de sortie>]";
+  return "Usage : --pdf <chemin du PDF SolarEdge> --rangees <nombre de rangées> [--scenario sans-stockage|stockage] [--output <chemin du pptx de sortie>]";
+}
+
+function parseScenario(raw: string | undefined): Scenario {
+  if (raw === undefined) {
+    return "sans-stockage";
+  }
+  if (!SCENARIOS.includes(raw as Scenario)) {
+    throw new Error(
+      `--scenario invalide : "${raw}". Valeurs autorisées : ${SCENARIOS.join(", ")}.`,
+    );
+  }
+  return raw as Scenario;
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -57,7 +86,8 @@ function parseArgs(argv: string[]): CliArgs {
   }
 
   const output = args.get("output") ?? defaultOutputPath(pdf);
-  return { pdf, rangees, output };
+  const scenario = parseScenario(args.get("scenario"));
+  return { pdf, rangees, output, scenario };
 }
 
 function defaultOutputPath(pdfPath: string): string {
@@ -65,10 +95,12 @@ function defaultOutputPath(pdfPath: string): string {
   return path.join("output", `${base}.pptx`);
 }
 
-async function run(argv: string[]): Promise<void> {
-  const { pdf, rangees, output } = parseArgs(argv);
-
-  const [page1Text, page2Text] = await getPageTexts(pdf, [1, 2]);
+async function runSansStockage(
+  zip: ReturnType<typeof openPptx>,
+  page1Text: string,
+  page2Text: string,
+  rangees: number,
+): Promise<void> {
   const extracted = extractFromPdfText(page1Text, page2Text);
   const values = buildValues(extracted, rangees);
 
@@ -81,8 +113,6 @@ async function run(argv: string[]): Promise<void> {
   console.log(`  Taux d'autoproduction      : ${values.tauxAutoproduction} %`);
   console.log(`  Nombre de rangées (manuel) : ${values.rangees}`);
   console.log(`Puissance installée calculée : ${values.puissanceInstallee} kWc`);
-
-  const zip = openPptx(TEMPLATE_PPTX);
 
   const slide1Xml = getEntryText(zip, "ppt/slides/slide1.xml");
   const { xml: newSlide1Xml, applied: slide1Applied } = replaceRuns(
@@ -106,8 +136,63 @@ async function run(argv: string[]): Promise<void> {
   );
 
   const chartImage = renderAnnualResultsChart(values);
-  replaceChartImage(zip, chartImage);
+  replaceChartImage(zip, chartImage, CHART_IMAGE_ENTRY["sans-stockage"]);
   console.log("Image du graphique (slide 2) remplacée.");
+}
+
+async function runStockage(
+  zip: ReturnType<typeof openPptx>,
+  page1Text: string,
+  page2Text: string,
+  rangees: number,
+): Promise<void> {
+  const extracted = extractFromPdfTextStorage(page1Text, page2Text);
+  const values = buildStorageValues(extracted, rangees);
+
+  console.log("Valeurs extraites du PDF :");
+  console.log(`  Nombre de modules              : ${values.nombreModules}`);
+  console.log(`  Production annuelle            : ${values.productionAnnuelleMwh} MWh`);
+  console.log(`  Ratio de performance           : ${values.ratioDePerformance} %`);
+  console.log(`  Taux d'autoconsommation affiché : ${values.tauxAutoconsommationAffichage} %`);
+  console.log(`  Taux d'autoproduction (stockage): ${values.tauxAutoproductionStockage} %`);
+  console.log(`  Nombre de rangées (manuel)      : ${values.rangees}`);
+  console.log(`Puissance installée calculée      : ${values.puissanceInstallee} kWc`);
+
+  const slide1Xml = getEntryText(zip, "ppt/slides/slide1.xml");
+  const { xml: newSlide1Xml, applied: slide1Applied } = replaceRuns(
+    slide1Xml,
+    buildSlide1Replacements(values),
+  );
+  setEntryText(zip, "ppt/slides/slide1.xml", newSlide1Xml);
+
+  const slide2Xml = getEntryText(zip, "ppt/slides/slide2.xml");
+  const { xml: newSlide2Xml, applied: slide2Applied } = replaceRuns(
+    slide2Xml,
+    buildSlide2ReplacementsStorage(values),
+  );
+  setEntryText(zip, "ppt/slides/slide2.xml", newSlide2Xml);
+
+  console.log(
+    `\nRemplacements de texte appliqués : ${slide1Applied.length + slide2Applied.length} (slide 1 : ${slide1Applied.length}, slide 2 : ${slide2Applied.length})`,
+  );
+  console.log("Slide 3 (énergie mensuelle estimée) non traitée, laissée inchangée.");
+
+  const chartImage = renderAnnualResultsChartStorage(values);
+  replaceChartImage(zip, chartImage, CHART_IMAGE_ENTRY.stockage);
+  console.log("Image du graphique (slide 2) remplacée.");
+}
+
+async function run(argv: string[]): Promise<void> {
+  const { pdf, rangees, output, scenario } = parseArgs(argv);
+
+  const [page1Text, page2Text] = await getPageTexts(pdf, [1, 2]);
+  const zip = openPptx(TEMPLATE_PPTX[scenario]);
+
+  if (scenario === "sans-stockage") {
+    await runSansStockage(zip, page1Text, page2Text, rangees);
+  } else {
+    await runStockage(zip, page1Text, page2Text, rangees);
+  }
 
   await mkdir(path.dirname(output), { recursive: true });
   writePptx(zip, output);
