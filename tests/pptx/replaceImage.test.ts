@@ -70,4 +70,41 @@ describe("replaceChartImage", () => {
 
     expect(() => replaceChartImage(zip, dummyPng())).toThrow(/srcRect/);
   });
+
+  it("swaps a different image entry when passed explicitly (storage template)", () => {
+    const STORAGE_FIXTURE_PPTX =
+      "test/data/scenario 1 avec stockage Projet_Ombriere_Rixhiem.pptx";
+    mkdirSync(OUTPUT_DIR, { recursive: true });
+    const outputPath = `${OUTPUT_DIR}/replace-image-storage.pptx`;
+
+    const original = openPptx(STORAGE_FIXTURE_PPTX);
+    const zip = openPptx(STORAGE_FIXTURE_PPTX);
+    const newImage = dummyPng();
+
+    replaceChartImage(zip, newImage, "ppt/media/image5.png");
+    writePptx(zip, outputPath);
+
+    const output = openPptx(outputPath);
+
+    expect(hash(getEntryBuffer(output, "ppt/media/image5.png"))).toBe(
+      hash(newImage),
+    );
+
+    const slide2Xml = getEntryText(output, "ppt/slides/slide2.xml");
+    expect(slide2Xml).toContain('<a:srcRect b="0" l="0" r="0" t="0"/>');
+    expect(slide2Xml).toContain('<a:off x="685800" y="2597086"/>');
+    expect(slide2Xml).toContain('<a:ext cx="10820400" cy="2493845"/>');
+
+    for (const entry of original.getEntries()) {
+      if (
+        entry.entryName === "ppt/media/image5.png" ||
+        entry.entryName === "ppt/slides/slide2.xml"
+      ) {
+        continue;
+      }
+      const originalBuffer = original.readFile(entry);
+      const outputBuffer = getEntryBuffer(output, entry.entryName);
+      expect(hash(outputBuffer)).toBe(hash(originalBuffer!));
+    }
+  });
 });
