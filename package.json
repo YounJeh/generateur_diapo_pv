@@ -1,0 +1,27 @@
+{
+  "name": "generateur-diapo-pv",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Extrait les valeurs d'un rapport SolarEdge (PDF) et met a jour un template PPTX de proposition commerciale PV.",
+  "bin": {
+    "generateur-diapo-pv": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/cli.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "canvas": "^2.11.2",
+    "pdfjs-dist": "^4.7.76"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.5",
+    "@types/node": "^22.7.4",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2",
+    "vitest": "^2.1.1"
+  }
+}
