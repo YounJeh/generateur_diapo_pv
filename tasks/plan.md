@@ -33,53 +33,53 @@ Confirmé via `/interview-me` puis vérifié par inspection directe des fichiers
 
 ### Phase 0 : Scaffolding
 
-- [ ] **Task 1** : Initialiser le projet TypeScript (`package.json`, `tsconfig.json`, `vitest`, dépendances `pdfjs-dist`, `canvas`, `sharp`, `adm-zip`, structure `src/`, `tests/`, script `npm run build` / `npm run dev` / `npm test`)
+- [x] **Task 1** : Initialiser le projet TypeScript (`package.json`, `tsconfig.json`, `vitest`, dépendances `pdfjs-dist`, `canvas`, `sharp`, `adm-zip`, structure `src/`, `tests/`, script `npm run build` / `npm run dev` / `npm test`)
 
 ### Phase 1 : Extraction des valeurs du PDF
 
-- [ ] **Task 2** : Lecteur PDF simple (`src/pdf/reader.ts`) — `getPageTexts(pdfPath, pageNumbers): Promise<string[]>` via `pdfjs-dist`, retourne le texte brut linéarisé de chaque page demandée
-- [ ] **Task 3** : Extracteurs regex par champ (`src/pdf/extractValues.ts`) — 7 règles généralistes (nombre de modules, production annuelle, ratio de performance depuis page 1 ; taux d'autoconsommation, surplus de production, taux d'autoproduction depuis page 2), chacune avec message d'erreur explicite si non trouvée
-- [ ] **Task 4** : Calcul de la puissance installée (`src/calc.ts`) — `puissanceInstallee(modules) = Math.ceil(modules * 470)` + assemblage du type `ExtractedValues` complet (7 extraites + 1 calculée + `rangees` fournie manuellement)
+- [x] **Task 2** : Lecteur PDF simple (`src/pdf/reader.ts`) — `getPageTexts(pdfPath, pageNumbers): Promise<string[]>` via `pdfjs-dist`, retourne le texte brut linéarisé de chaque page demandée
+- [x] **Task 3** : Extracteurs regex par champ (`src/pdf/extractValues.ts`) — 7 règles généralistes (nombre de modules, production annuelle, ratio de performance depuis page 1 ; taux d'autoconsommation, surplus de production, taux d'autoproduction depuis page 2), chacune avec message d'erreur explicite si non trouvée
+- [x] **Task 4** : Calcul de la puissance installée (`src/calc.ts`) — `puissanceInstallee(modules) = Math.ceil(modules * 470)` + assemblage du type `ExtractedValues` complet (7 extraites + 1 calculée + `rangees` fournie manuellement)
 
 ### Checkpoint 1 : Pipeline d'extraction
-- [ ] `npm test` passe sur les tests d'extraction (regex) contre le PDF réel de `test/data/`
-- [ ] Les 7 valeurs + la puissance installée calculée correspondent aux valeurs vérifiées ci-dessus (750, 350,73→350730, 77, 71, 29, 38, puissance calculée)
-- [ ] Revue avec l'utilisateur avant de continuer
+- [x] `npm test` passe sur les tests d'extraction (regex) contre le PDF réel de `test/data/`
+- [x] Les 7 valeurs + la puissance installée calculée correspondent aux valeurs vérifiées ci-dessus (750, 350,73→350730, 77, 71, 29, 38, puissance calculée)
+- [x] Revue avec l'utilisateur avant de continuer
 
 ### Phase 2 : Remplacement de texte dans le PPTX
 
-- [ ] **Task 5** : Utilitaire zip PPTX (`src/pptx/zip.ts`) — ouvrir le `.pptx`, lire/écrire une entrée texte (`slide1.xml`, `slide2.xml`), lire/écrire une entrée binaire (`image8.png`), réécrire l'archive en recopiant toutes les autres entrées telles quelles
-- [ ] **Task 6** : Formatage des valeurs (`src/pptx/format.ts`) — kWh avec séparateur de milliers "espace" depuis la valeur MWh (virgule → point, ×1000, formaté "350 730"), ratio de performance repris tel quel du texte source PDF (pas de décimale forcée)
-- [ ] **Task 7** : Table de remplacement slide 1 (`src/pptx/slide1Map.ts`) — 5 correspondances exactes de run (titre "350kWc", "Ombrières puissance de 350 kWc", "350 kWc" standalone, "3 rangées d'ombrières photovoltaïques", "3 rangées" standalone)
-- [ ] **Task 8** : Table de remplacement slide 2 (`src/pptx/slide2Map.ts`) — 11 correspondances exactes de run (titre, "350 kWc", "744", "347 760 kWh", "77,0 %", autoconsommation ×2, surplus ×2, autoproduction ×2) ; "52%" explicitement exclu et loggé comme ignoré
-- [ ] **Task 9** : Moteur de remplacement (`src/pptx/replaceText.ts`) — applique une table de correspondance sur un XML de slide, erreur explicite si un ancien texte attendu n'est pas trouvé (détecte un changement de template), retourne aussi la liste des remplacements effectués
+- [x] **Task 5** : Utilitaire zip PPTX (`src/pptx/zip.ts`) — ouvrir le `.pptx`, lire/écrire une entrée texte (`slide1.xml`, `slide2.xml`), lire/écrire une entrée binaire (`image8.png`), réécrire l'archive en recopiant toutes les autres entrées telles quelles
+- [x] **Task 6** : Formatage des valeurs (`src/pptx/format.ts`) — kWh avec séparateur de milliers "espace" depuis la valeur MWh (virgule → point, ×1000, formaté "350 730"), ratio de performance repris tel quel du texte source PDF (pas de décimale forcée)
+- [x] **Task 7** : Table de remplacement slide 1 (`src/pptx/slide1Map.ts`) — 5 correspondances exactes de run (titre "350kWc", "Ombrières puissance de 350 kWc", "350 kWc" standalone, "3 rangées d'ombrières photovoltaïques", "3 rangées" standalone)
+- [x] **Task 8** : Table de remplacement slide 2 (`src/pptx/slide2Map.ts`) — 11 correspondances exactes de run (titre, "350 kWc", "744", "347 760 kWh", "77,0 %", autoconsommation ×2, surplus ×2, autoproduction ×2) ; "52%" explicitement exclu et loggé comme ignoré
+- [x] **Task 9** : Moteur de remplacement (`src/pptx/replaceText.ts`) — applique une table de correspondance sur un XML de slide, erreur explicite si un ancien texte attendu n'est pas trouvé (détecte un changement de template), retourne aussi la liste des remplacements effectués
 
 ### Checkpoint 2 : Remplacement de texte
-- [ ] Génération d'un pptx de test : ouverture du zip de sortie, relecture des `<a:t>` de slide1/slide2 → toutes les valeurs attendues sont présentes, "52%" est inchangé
-- [ ] Toutes les entrées du zip non touchées (autres slides, `media/`, `theme`, etc.) sont identiques octet pour octet à l'original (hash de comparaison)
-- [ ] Revue avec l'utilisateur avant de continuer
+- [x] Génération d'un pptx de test : ouverture du zip de sortie, relecture des `<a:t>` de slide1/slide2 → toutes les valeurs attendues sont présentes, "52%" est inchangé
+- [x] Toutes les entrées du zip non touchées (autres slides, `media/`, `theme`, etc.) sont identiques octet pour octet à l'original (hash de comparaison)
+- [x] Revue avec l'utilisateur avant de continuer
 
 ### Phase 3 : Remplacement de l'image du graphique
 
-- [ ] **Task 10** : Détection de la zone du graphique (`src/pdf/chartBounds.ts`) — via `pdfjs-dist` `getTextContent()` sur la page 2, trouver les positions du texte-ancre haut ("RÉSULTATS DE CONSOMMATION ET DE PRODUCTION ANNUELLES") et bas ("Énergie solaire" / dernière ligne de légende), en déduire une bounding box (+ marge), erreur explicite si une ancre est introuvable
-- [ ] **Task 11** : Rendu + crop (`src/pdf/renderChart.ts`) — rendre la page 2 en raster haute résolution via `pdfjs-dist` + `canvas`, rogner selon la bounding box, exporter en PNG (buffer)
-- [ ] **Task 12** : Remplacement de l'image dans le pptx (`src/pptx/replaceImage.ts`) — remplacer les octets de `ppt/media/image8.png` par le nouveau PNG, remettre `<a:srcRect b="0" l="0" r="0" t="0"/>` (ou le supprimer) dans `slide2.xml`, sans toucher à `<a:off>`/`<a:ext>` (position/taille du cadre inchangées)
+- [x] **Task 10** : Détection de la zone du graphique (`src/pdf/chartBounds.ts`) — via `pdfjs-dist` `getTextContent()` sur la page 2, trouver les positions du texte-ancre haut ("RÉSULTATS DE CONSOMMATION ET DE PRODUCTION ANNUELLES") et bas ("Énergie solaire" / dernière ligne de légende), en déduire une bounding box (+ marge), erreur explicite si une ancre est introuvable
+- [x] **Task 11** : Rendu + crop (`src/pdf/renderChart.ts`) — rendre la page 2 en raster haute résolution via `pdfjs-dist` + `canvas`, rogner selon la bounding box, exporter en PNG (buffer)
+- [x] **Task 12** : Remplacement de l'image dans le pptx (`src/pptx/replaceImage.ts`) — remplacer les octets de `ppt/media/image8.png` par le nouveau PNG, remettre `<a:srcRect b="0" l="0" r="0" t="0"/>` (ou le supprimer) dans `slide2.xml`, sans toucher à `<a:off>`/`<a:ext>` (position/taille du cadre inchangées)
 
 ### Checkpoint 3 : Image du graphique
-- [ ] Le pptx généré, une fois dézippé, contient la nouvelle image dans `media/image8.png` avec un contenu visiblement correspondant aux données de la page 2 du PDF (vérification visuelle manuelle du PNG extrait)
-- [ ] Le cadre image (`off`/`ext`) dans `slide2.xml` est identique à l'original
-- [ ] Revue avec l'utilisateur avant de continuer
+- [x] Le pptx généré, une fois dézippé, contient la nouvelle image dans `media/image8.png` avec un contenu visiblement correspondant aux données de la page 2 du PDF (vérification visuelle manuelle du PNG extrait)
+- [x] Le cadre image (`off`/`ext`) dans `slide2.xml` est identique à l'original
+- [x] Revue avec l'utilisateur avant de continuer
 
 ### Phase 4 : CLI et bout-en-bout
 
-- [ ] **Task 13** : CLI (`src/cli.ts`) — orchestration extraction → calcul → remplacement texte → remplacement image → écriture du fichier de sortie ; arguments `--pdf`, `--rangees`, `--output` (défaut basé sur le nom du PDF) ; affichage clair des valeurs extraites/calculées et des remplacements ignorés (ex. "52%")
-- [ ] **Task 14** : Exécution bout-en-bout sur les fixtures réelles (`test/data/Solar_Edge_ITM_Rixhiem_3_omb_V2.pdf` + `--rangees 3`), production d'un pptx dans `test/output/` (gitignored), vérification manuelle à l'ouverture (PowerPoint/LibreOffice/Google Slides)
+- [x] **Task 13** : CLI (`src/cli.ts`) — orchestration extraction → calcul → remplacement texte → remplacement image → écriture du fichier de sortie ; arguments `--pdf`, `--rangees`, `--output` (défaut basé sur le nom du PDF) ; affichage clair des valeurs extraites/calculées et des remplacements ignorés (ex. "52%")
+- [x] **Task 14** : Exécution bout-en-bout sur les fixtures réelles (`test/data/Solar_Edge_ITM_Rixhiem_3_omb_V2.pdf` + `--rangees 3`), production d'un pptx dans `test/output/` (gitignored), vérification manuelle à l'ouverture (PowerPoint/LibreOffice/Google Slides)
 
 ### Checkpoint final
-- [ ] Toutes les valeurs listées sont correctement remplacées dans le pptx généré
-- [ ] Le reste du contenu (mise en forme, autres slides, "52%") est inchangé
-- [ ] `README.md` mis à jour avec les instructions d'usage du CLI
-- [ ] Prêt pour `/code-review-and-quality` puis proposition de PR (selon les instructions du projet)
+- [x] Toutes les valeurs listées sont correctement remplacées dans le pptx généré
+- [x] Le reste du contenu (mise en forme, autres slides, "52%") est inchangé
+- [x] `README.md` mis à jour avec les instructions d'usage du CLI
+- [x] Prêt pour `/code-review-and-quality` puis proposition de PR (selon les instructions du projet)
 
 ## Risks and Mitigations
 
