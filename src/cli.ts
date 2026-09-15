@@ -16,7 +16,14 @@ import {
   buildSlide2Replacements,
 } from "./pptx/slide2Map.js";
 import { buildSlide2ReplacementsStorage } from "./pptx/slide2MapStorage.js";
-import { getEntryText, openPptx, setEntryText, writePptx } from "./pptx/zip.js";
+import {
+  getEntryText,
+  openPptx,
+  setEntryText,
+  writePptx,
+  type Pptx,
+} from "./pptx/zip.js";
+import type { SlideValues } from "./types.js";
 
 type Scenario = "sans-stockage" | "stockage";
 
@@ -95,8 +102,19 @@ function defaultOutputPath(pdfPath: string): string {
   return path.join("output", `${base}.pptx`);
 }
 
+/** Applique les remplacements de slide 1 (identiques pour les deux scénarios) et renvoie le nombre appliqué. */
+function applySlide1Replacements(zip: Pptx, values: SlideValues): number {
+  const slide1Xml = getEntryText(zip, "ppt/slides/slide1.xml");
+  const { xml: newSlide1Xml, applied } = replaceRuns(
+    slide1Xml,
+    buildSlide1Replacements(values),
+  );
+  setEntryText(zip, "ppt/slides/slide1.xml", newSlide1Xml);
+  return applied.length;
+}
+
 async function runSansStockage(
-  zip: ReturnType<typeof openPptx>,
+  zip: Pptx,
   page1Text: string,
   page2Text: string,
   rangees: number,
@@ -114,12 +132,7 @@ async function runSansStockage(
   console.log(`  Nombre de rangées (manuel) : ${values.rangees}`);
   console.log(`Puissance installée calculée : ${values.puissanceInstallee} kWc`);
 
-  const slide1Xml = getEntryText(zip, "ppt/slides/slide1.xml");
-  const { xml: newSlide1Xml, applied: slide1Applied } = replaceRuns(
-    slide1Xml,
-    buildSlide1Replacements(values),
-  );
-  setEntryText(zip, "ppt/slides/slide1.xml", newSlide1Xml);
+  const slide1Applied = applySlide1Replacements(zip, values);
 
   const slide2Xml = getEntryText(zip, "ppt/slides/slide2.xml");
   const { xml: newSlide2Xml, applied: slide2Applied } = replaceRuns(
@@ -129,7 +142,7 @@ async function runSansStockage(
   setEntryText(zip, "ppt/slides/slide2.xml", newSlide2Xml);
 
   console.log(
-    `\nRemplacements de texte appliqués : ${slide1Applied.length + slide2Applied.length} (slide 1 : ${slide1Applied.length}, slide 2 : ${slide2Applied.length})`,
+    `\nRemplacements de texte appliqués : ${slide1Applied + slide2Applied.length} (slide 1 : ${slide1Applied}, slide 2 : ${slide2Applied.length})`,
   );
   console.log(
     `Laissé(s) inchangé(s) volontairement, hors périmètre : ${SLIDE2_OUT_OF_SCOPE_TEXTS.join(", ")}`,
@@ -141,7 +154,7 @@ async function runSansStockage(
 }
 
 async function runStockage(
-  zip: ReturnType<typeof openPptx>,
+  zip: Pptx,
   page1Text: string,
   page2Text: string,
   rangees: number,
@@ -158,12 +171,7 @@ async function runStockage(
   console.log(`  Nombre de rangées (manuel)      : ${values.rangees}`);
   console.log(`Puissance installée calculée      : ${values.puissanceInstallee} kWc`);
 
-  const slide1Xml = getEntryText(zip, "ppt/slides/slide1.xml");
-  const { xml: newSlide1Xml, applied: slide1Applied } = replaceRuns(
-    slide1Xml,
-    buildSlide1Replacements(values),
-  );
-  setEntryText(zip, "ppt/slides/slide1.xml", newSlide1Xml);
+  const slide1Applied = applySlide1Replacements(zip, values);
 
   const slide2Xml = getEntryText(zip, "ppt/slides/slide2.xml");
   const { xml: newSlide2Xml, applied: slide2Applied } = replaceRuns(
@@ -173,7 +181,7 @@ async function runStockage(
   setEntryText(zip, "ppt/slides/slide2.xml", newSlide2Xml);
 
   console.log(
-    `\nRemplacements de texte appliqués : ${slide1Applied.length + slide2Applied.length} (slide 1 : ${slide1Applied.length}, slide 2 : ${slide2Applied.length})`,
+    `\nRemplacements de texte appliqués : ${slide1Applied + slide2Applied.length} (slide 1 : ${slide1Applied}, slide 2 : ${slide2Applied.length})`,
   );
   console.log("Slide 3 (énergie mensuelle estimée) non traitée, laissée inchangée.");
 
