@@ -146,7 +146,9 @@ async function drawTextItems(
     // l'envers (vérifié empiriquement).
     const flipped: Matrix = [t[0], -t[1], t[2], -t[3], t[4], t[5]];
     const tx = multiply(viewportTransform, flipped);
-    const itemWidth = "width" in item ? item.width * viewportTransform[0] : 0;
+    // item est ici garanti être un TextItem (a toujours .width) grâce au
+    // filtre "transform" in item ci-dessus, qui exclut TextMarkedContent.
+    const itemWidth = item.width * viewportTransform[0];
 
     context.save();
     context.resetTransform();
