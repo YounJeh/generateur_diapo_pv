@@ -1,15 +1,20 @@
 import { createCanvas } from "canvas";
-import type { ExtractedValues } from "../types.js";
+import type { ExtractedValues, StorageExtractedValues } from "../types.js";
 
 /**
- * Ratio largeur/hauteur du cadre image de la slide 2 (`<a:ext>` dans
- * slide2.xml : cx=10718018, cy=2219711 EMU). L'image est étirée pour
- * remplir ce cadre (`<a:stretch/>`) : la générer à ce ratio évite toute
- * déformation visible une fois insérée dans le pptx.
+ * Ratio largeur/hauteur par défaut, celui du cadre image de la slide 2 du
+ * template sans stockage (`<a:ext>` dans slide2.xml : cx=10718018,
+ * cy=2219711 EMU). L'image est étirée pour remplir ce cadre
+ * (`<a:stretch/>`) : la générer à ce ratio évite toute déformation visible
+ * une fois insérée dans le pptx. Paramétrable (voir `renderAnnualResultsChart`)
+ * car le template "avec stockage" utilise un cadre de ratio différent.
  */
-const FRAME_RATIO = 10718018 / 2219711;
+const DEFAULT_FRAME_RATIO = 10718018 / 2219711;
 const WIDTH = 2344;
-const HEIGHT = Math.round(WIDTH / FRAME_RATIO);
+
+function heightForRatio(frameRatio: number): number {
+  return Math.round(WIDTH / frameRatio);
+}
 
 const SURFACE = "#fcfcfb";
 const INK = "#0b0b0b";
@@ -25,6 +30,20 @@ const PROD_TEAL = "#00bbaa";
 const CONS_BLUE = "#6fa8ff";
 const CONS_ORANGE = "#ffb44c";
 
+// Couleurs du segment "stockage" (scénario avec stockage), échantillonnées
+// de la même façon sur le graphique vectoriel du rapport SolarEdge storage :
+// des teintes plus claires des couleurs "bâtiment"/"PV" ci-dessus (le PDF
+// source réutilise exactement PROD_GREEN/PROD_TEAL/CONS_BLUE/CONS_ORANGE
+// pour bâtiment/réseau/PV/réseau, seul le stockage a ses propres teintes).
+const PROD_STOCKAGE_GREEN = "#88ffbb";
+const CONS_STOCKAGE_BLUE = "#bbddff";
+
+/**
+ * Ratio largeur/hauteur du cadre image de la slide 2 du template "avec
+ * stockage" (`<a:ext>` : cx=10820400, cy=2493845 EMU).
+ */
+const STORAGE_FRAME_RATIO = 10820400 / 2493845;
+
 interface Segment {
   label: string;
   value: number;
@@ -35,7 +54,8 @@ interface Segment {
 interface Row {
   label: string;
   total: number;
-  segments: [Segment, Segment];
+  /** Nombre variable de segments empilés (2 pour sans-stockage, 3 pour avec stockage). */
+  segments: Segment[];
 }
 
 type AnnualResultsChartValues = Pick<
@@ -104,6 +124,78 @@ function buildRows(values: AnnualResultsChartValues): [Row, Row] {
   ];
 }
 
+type StorageAnnualResultsChartValues = Pick<
+  StorageExtractedValues,
+  | "productionTotaleMwh"
+  | "consommationTotaleMwh"
+  | "versBatimentMwh"
+  | "versStockageMwh"
+  | "versReseauMwh"
+  | "depuisPvMwh"
+  | "depuisStockageMwh"
+  | "duReseauMwh"
+  | "tauxAutoconsommation"
+  | "versStockagePct"
+  | "surplusProduction"
+  | "tauxAutoproduction"
+  | "depuisStockagePct"
+>;
+
+function buildStorageRows(values: StorageAnnualResultsChartValues): [Row, Row] {
+  const duReseauPct =
+    100 - values.tauxAutoproduction - values.depuisStockagePct;
+  return [
+    {
+      label: "Production",
+      total: parseFr(values.productionTotaleMwh),
+      segments: [
+        {
+          label: "Vers le bâtiment",
+          value: parseFr(values.versBatimentMwh),
+          pct: values.tauxAutoconsommation,
+          color: PROD_GREEN,
+        },
+        {
+          label: "Vers le stockage",
+          value: parseFr(values.versStockageMwh),
+          pct: values.versStockagePct,
+          color: PROD_STOCKAGE_GREEN,
+        },
+        {
+          label: "Vers le réseau",
+          value: parseFr(values.versReseauMwh),
+          pct: values.surplusProduction,
+          color: PROD_TEAL,
+        },
+      ],
+    },
+    {
+      label: "Consommation",
+      total: parseFr(values.consommationTotaleMwh),
+      segments: [
+        {
+          label: "Depuis le PV",
+          value: parseFr(values.depuisPvMwh),
+          pct: values.tauxAutoproduction,
+          color: CONS_BLUE,
+        },
+        {
+          label: "Depuis le stockage",
+          value: parseFr(values.depuisStockageMwh),
+          pct: values.depuisStockagePct,
+          color: CONS_STOCKAGE_BLUE,
+        },
+        {
+          label: "Du réseau",
+          value: parseFr(values.duReseauMwh),
+          pct: duReseauPct,
+          color: CONS_ORANGE,
+        },
+      ],
+    },
+  ];
+}
+
 function roundedRect(
   ctx: import("canvas").CanvasRenderingContext2D,
   x: number,
@@ -124,19 +216,18 @@ function roundedRect(
 }
 
 /**
- * Dessine le graphique "RÉSULTATS DE CONSOMMATION ET DE PRODUCTION
- * ANNUELLES" (barres empilées, couleurs d'origine, longueur proportionnelle
- * au MWh — format retenu par l'utilisateur après comparaison de plusieurs
- * propositions). Remplace le crop du PDF source utilisé précédemment.
+ * Moteur de dessin générique : rend 2 lignes (Production / Consommation) à
+ * un nombre variable de segments par barre, à un ratio largeur/hauteur
+ * paramétrable. Partagé par `renderAnnualResultsChart` (2 segments) et
+ * `renderAnnualResultsChartStorage` (3 segments).
  */
-export function renderAnnualResultsChart(
-  values: AnnualResultsChartValues,
-): Buffer {
-  const canvas = createCanvas(WIDTH, HEIGHT);
+function drawChart(rows: [Row, Row], frameRatio: number): Buffer {
+  const height = heightForRatio(frameRatio);
+  const canvas = createCanvas(WIDTH, height);
   const ctx = canvas.getContext("2d");
 
   ctx.fillStyle = SURFACE;
-  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  ctx.fillRect(0, 0, WIDTH, height);
 
   ctx.fillStyle = INK_MUTED;
   ctx.font = "700 22px sans-serif";
@@ -144,7 +235,6 @@ export function renderAnnualResultsChart(
   ctx.textBaseline = "alphabetic";
   ctx.fillText("RÉSULTATS DE CONSOMMATION ET DE PRODUCTION ANNUELLES", 64, 58);
 
-  const rows = buildRows(values);
   const maxTotal = Math.max(rows[0].total, rows[1].total);
 
   const marginX = 64;
@@ -216,4 +306,30 @@ export function renderAnnualResultsChart(
   );
 
   return canvas.toBuffer("image/png");
+}
+
+/**
+ * Dessine le graphique "RÉSULTATS DE CONSOMMATION ET DE PRODUCTION
+ * ANNUELLES" (barres empilées, couleurs d'origine, longueur proportionnelle
+ * au MWh — format retenu par l'utilisateur après comparaison de plusieurs
+ * propositions). Remplace le crop du PDF source utilisé précédemment.
+ */
+export function renderAnnualResultsChart(
+  values: AnnualResultsChartValues,
+  frameRatio: number = DEFAULT_FRAME_RATIO,
+): Buffer {
+  return drawChart(buildRows(values), frameRatio);
+}
+
+/**
+ * Variante du graphique "RÉSULTATS DE CONSOMMATION ET DE PRODUCTION
+ * ANNUELLES" pour le scénario "avec stockage" : 3 segments par barre
+ * (bâtiment/stockage/réseau ; PV/stockage/réseau), même style visuel,
+ * ratio de cadre par défaut = celui du template storage.
+ */
+export function renderAnnualResultsChartStorage(
+  values: StorageAnnualResultsChartValues,
+  frameRatio: number = STORAGE_FRAME_RATIO,
+): Buffer {
+  return drawChart(buildStorageRows(values), frameRatio);
 }

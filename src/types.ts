@@ -43,3 +43,33 @@ export interface SlideValues extends ExtractedValues {
   /** Nombre de rangées d'ombrières, fourni manuellement (absent du texte du PDF). */
   rangees: number;
 }
+
+/** Valeurs extraites du PDF SolarEdge, spécifiques au scénario "avec stockage" (page 2). */
+export interface StorageExtractedValues extends ExtractedValues {
+  /** MWh produits envoyés vers le stockage (page 2, ligne Production). */
+  versStockageMwh: string;
+  /** % de la production envoyé vers le stockage (page 2, "Vers le stockage ... (X%)"). */
+  versStockagePct: number;
+  /** MWh consommés depuis le stockage (page 2, ligne Consommation). */
+  depuisStockageMwh: string;
+  /** % de la consommation couvert depuis le stockage (page 2, "Depuis le stockage ... (X%)"). */
+  depuisStockagePct: number;
+}
+
+/**
+ * Valeurs complètes utilisées pour remplir le template pptx "avec stockage".
+ */
+export interface StorageSlideValues extends StorageExtractedValues {
+  /** Puissance installée en kWc = nombre de modules x 470, arrondi à l'entier supérieur. */
+  puissanceInstallee: number;
+  /** Nombre de rangées d'ombrières, fourni manuellement (absent du texte du PDF). */
+  rangees: number;
+  /**
+   * Taux d'autoconsommation affiché = %vers-bâtiment + %vers-stockage ; si
+   * le total est >= 95, affiché comme "+95" (convention marketing) plutôt
+   * que le nombre exact.
+   */
+  tauxAutoconsommationAffichage: string;
+  /** Taux d'autoproduction combiné = %depuis-PV + %depuis-stockage, affiché tel quel. */
+  tauxAutoproductionStockage: number;
+}
