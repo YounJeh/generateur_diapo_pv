@@ -10,6 +10,23 @@ const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 
 export { OUTPUT_DIR };
 
+// `sessionId` peut venir d'un paramètre d'URL fourni par le client
+// (`POST /api/generate/:sessionId`) : sans cette validation, une valeur
+// forgée contenant "../" atteindrait `path.join` ci-dessous et permettrait
+// une traversée de chemin. `createSessionId()` produit toujours un UUID, donc
+// ce format n'est jamais trop restrictif pour un usage normal.
+const SESSION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function isValidSessionId(sessionId: string): boolean {
+  return SESSION_ID_PATTERN.test(sessionId);
+}
+
+function assertValidSessionId(sessionId: string): void {
+  if (!isValidSessionId(sessionId)) {
+    throw new Error(`Identifiant de session invalide : "${sessionId}".`);
+  }
+}
+
 /**
  * Ce qu'une extraction (`POST /api/extract`) enregistre pour qu'une
  * génération ultérieure (`POST /api/generate/:sessionId`) puisse relire les
@@ -34,6 +51,7 @@ export function createSessionId(): string {
 }
 
 export function sessionUploadDir(sessionId: string): string {
+  assertValidSessionId(sessionId);
   return path.join(UPLOADS_DIR, sessionId);
 }
 
@@ -67,10 +85,12 @@ export async function readSessionManifest(
 }
 
 export function sessionOutputPptxPath(sessionId: string): string {
+  assertValidSessionId(sessionId);
   return path.join(OUTPUT_DIR, `${sessionId}.pptx`);
 }
 
 export function sessionOutputPreviewDir(sessionId: string): string {
+  assertValidSessionId(sessionId);
   return path.join(OUTPUT_DIR, `${sessionId}-preview`);
 }
 

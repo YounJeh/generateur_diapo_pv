@@ -7,6 +7,13 @@ import { createSessionId, ensureSessionUploadDir, writeSessionManifest } from ".
 
 const MAX_FILE_SIZE_BYTES = 35 * 1024 * 1024;
 
+// Seuls ces noms de champ sont attendus (même convention que les flags CLI
+// --groupe-N-pdf-*). `filename` ci-dessous construit le nom de fichier sur
+// disque à partir de `file.fieldname` : sans cet allowlist, un champ forgé
+// (ex. "../../../../etc/cron.d/x") permettrait une traversée de chemin lors
+// de l'écriture (multer ne sanitize pas `filename` avant `path.join`).
+const ALLOWED_FIELDNAME_PATTERN = /^(pdf|groupe-\d+-pdf-(sans|avec)-stockage)$/;
+
 interface RequestWithSessionId extends Request {
   sessionId?: string;
 }
@@ -28,6 +35,13 @@ const upload = multer({
     },
   }),
   limits: { fileSize: MAX_FILE_SIZE_BYTES },
+  fileFilter: (_req, file, callback) => {
+    if (!ALLOWED_FIELDNAME_PATTERN.test(file.fieldname)) {
+      callback(new Error(`Champ de fichier inattendu : "${file.fieldname}".`));
+      return;
+    }
+    callback(null, true);
+  },
 });
 
 export const extractRouter = Router();
@@ -69,7 +83,16 @@ extractRouter.post(
       }
 
       if (scenario === "comparaison") {
-        const groupes = parseGroupesFromRequest(req.body, files);
+        let groupes: Groupe[];
+        try {
+          groupes = parseGroupesFromRequest(req.body, files);
+        } catch (validationError) {
+          res.status(400).json({
+            error:
+              validationError instanceof Error ? validationError.message : String(validationError),
+          });
+          return;
+        }
         if (groupes.length === 0) {
           res.status(400).json({
             error:
@@ -136,6 +159,11 @@ function parsePositiveInt(raw: unknown): number | undefined {
  * `groupe-N-rangees` (texte) et `groupe-N-pdf-sans-stockage`/`groupe-N-pdf-avec-stockage`
  * (fichiers), même convention de nommage que les flags CLI
  * (`--groupe-N-rangees`, etc.) pour rester cohérent entre les deux interfaces.
+ *
+ * Lève une erreur explicite (plutôt que d'ignorer silencieusement le groupe)
+ * si un groupe référencé par `groupe-N-*` a des rangées invalides ou aucun
+ * PDF — un groupe manquant sans erreur produirait une comparaison plus
+ * pauvre que ce que l'utilisateur a soumis, sans aucune indication.
  */
 function parseGroupesFromRequest(
   body: Record<string, unknown>,
@@ -155,14 +183,16 @@ function parseGroupesFromRequest(
   for (const n of sortedIndices) {
     const rangees = parsePositiveInt(body[`groupe-${n}-rangees`]);
     if (rangees === undefined) {
-      continue;
+      throw new Error(`Le champ groupe-${n}-rangees doit être un entier positif.`);
     }
     const pdfSansStockage = files.find((f) => f.fieldname === `groupe-${n}-pdf-sans-stockage`)
       ?.path;
     const pdfAvecStockage = files.find((f) => f.fieldname === `groupe-${n}-pdf-avec-stockage`)
       ?.path;
     if (!pdfSansStockage && !pdfAvecStockage) {
-      continue;
+      throw new Error(
+        `Le groupe ${n} doit fournir au moins un PDF (sans-stockage et/ou avec-stockage).`,
+      );
     }
     groupes.push({ rangees, pdfSansStockage, pdfAvecStockage });
   }

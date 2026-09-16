@@ -52,10 +52,11 @@ export async function convertPptxToPngs(pptxPath: string, outDir: string): Promi
   await mkdir(outDir, { recursive: true });
 
   const scratchDir = await mkdtemp(path.join(tmpdir(), "pv-preview-"));
+  let doc: Awaited<ReturnType<typeof pdfjsLib.getDocument>["promise"]> | undefined;
   try {
     const pdfPath = await convertPptxToPdf(pptxPath, scratchDir);
     const data = new Uint8Array(await readFile(pdfPath));
-    const doc = await pdfjsLib.getDocument({
+    doc = await pdfjsLib.getDocument({
       data,
       CanvasFactory: NodeCanvasFactory,
       disableFontFace: true,
@@ -80,6 +81,11 @@ export async function convertPptxToPngs(pptxPath: string, outDir: string): Promi
 
     return pngPaths;
   } finally {
+    // Sans ce destroy(), les buffers/état interne du document pdfjs restent
+    // en mémoire pour la durée de vie du process serveur — notable ici car
+    // cette fonction tourne une fois par clic "Générer", contrairement à son
+    // usage plus ponctuel dans renderChart.ts.
+    await doc?.destroy();
     await rm(scratchDir, { recursive: true, force: true });
   }
 }
