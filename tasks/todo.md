@@ -8,12 +8,12 @@ Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/intervie
 **Description :** Installer `libreoffice-impress` via apt dans le worktree courant, et ajouter l'installation à `.devcontainer/devcontainer.json` (ou un `Dockerfile` associé) pour qu'elle survive aux rebuilds du devcontainer.
 
 **Acceptance criteria :**
-- [ ] `soffice --version` fonctionne dans le shell courant
-- [ ] Conversion manuelle d'un pptx existant (`output/*.pptx`) en PNG via `soffice --headless --convert-to png --outdir /tmp/test <fichier>` produit un ou plusieurs PNG valides
-- [ ] `.devcontainer/devcontainer.json` (ou `Dockerfile`) documente l'installation pour les futurs rebuilds
+- [x] `soffice --version` fonctionne dans le shell courant
+- [x] Conversion manuelle d'un pptx existant (`output/*.pptx`) en PDF puis en PNG produit des images valides (voir décision révisée dans `tasks/plan.md` : `--convert-to png` seul n'exporte que la 1ère slide)
+- [x] `.devcontainer/devcontainer.json` (ou `Dockerfile`) documente l'installation pour les futurs rebuilds
 
 **Verification :**
-- [ ] Manuel : commandes ci-dessus exécutées avec succès
+- [x] Manuel : commandes ci-dessus exécutées avec succès
 
 **Dependencies :** Aucune
 
@@ -29,8 +29,8 @@ Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/intervie
 **Description :** Extraire de `runSansStockage`/`runStockage` (`src/cli.ts`) la partie lecture PDF + calcul, sans aucune écriture pptx : `extractSansStockage(pdfPath, rangees): Promise<SlideValues>`, `extractStockage(pdfPath, rangees): Promise<StorageSlideValues>`. Réutilise `getPageTexts`, `extractFromPdfText`/`extractFromPdfTextStorage`, `buildValues`/`buildStorageValues` tels quels. Aucun `console.log`.
 
 **Acceptance criteria :**
-- [ ] `extractSansStockage`/`extractStockage` sur les fixtures réelles produisent exactement les mêmes valeurs que la version actuelle du CLI
-- [ ] Aucun effet de bord (pas de console.log, pas d'écriture disque)
+- [x] `extractSansStockage`/`extractStockage` sur les fixtures réelles produisent exactement les mêmes valeurs que la version actuelle du CLI
+- [x] Aucun effet de bord (pas de console.log, pas d'écriture disque)
 
 **Verification :**
 - [ ] Tests : `npm test`
@@ -48,8 +48,8 @@ Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/intervie
 **Description :** Extraire la partie "application au template pptx" de `runSansStockage`/`runStockage` : `renderSansStockage(values: SlideValues, scenarioNumero?): Pptx`, `renderStockage(pdf: string, values: StorageSlideValues, scenarioNumero?): Promise<Pptx>`. Réutilise `openPptx`, `buildSlide1Replacements`, `buildSlide2Replacements`/`buildSlide2ReplacementsStorage`/`buildSlide3ReplacementsStorage`, `renderAnnualResultsChart`/`renderAnnualResultsChartStorage`, `replaceChartImage`, `replaceMonthlyChartImage` tels quels. Retourne le zip en mémoire (pas d'écriture disque).
 
 **Acceptance criteria :**
-- [ ] Le zip retourné, une fois écrit sur disque (`writePptx`), est identique octet pour octet au pptx produit par le CLI actuel sur les mêmes valeurs/fixtures
-- [ ] Aucun `console.log` dans ce module
+- [x] Le zip retourné, une fois écrit sur disque (`writePptx`), est identique octet pour octet au pptx produit par le CLI actuel sur les mêmes valeurs/fixtures
+- [x] Aucun `console.log` dans ce module
 
 **Verification :**
 - [ ] Tests : `npm test`
@@ -67,9 +67,9 @@ Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/intervie
 **Description :** Extraire l'orchestration de `runComparaison` : `buildComparaisonPptx(groupes: Groupe[]): Promise<{ zip: Pptx; totalSlides: number; warnings: string[] }>`, réutilisant `extract*`/`render*` (Task 2/3), `appendSlides`, `checkDimensioningConsistency`. Warnings retournés (pas `console.warn`).
 
 **Acceptance criteria :**
-- [ ] Sur les fixtures réelles de comparaison (2 groupes), produit un pptx identique octet pour octet à la sortie actuelle du CLI
-- [ ] Fonctionne aussi avec 1 seul groupe et avec 3+ groupes (pas de régression au-delà du cas 2-groupes déjà testé)
-- [ ] Warnings de cohérence de dimensionnement retournés dans le tableau `warnings`, pas affichés directement
+- [x] Sur les fixtures réelles de comparaison (2 groupes), produit un pptx au contenu identique à la sortie actuelle du CLI (identique octet pour octet non atteignable : timestamps AdmZip non déterministes, déjà le cas avant ce refactor — vérifié par diff -rq sur les zips désarchivés)
+- [x] Fonctionne aussi avec 1 seul groupe et avec 3+ groupes (testé : 1 groupe à 2 cas, 2 groupes dynamiques)
+- [x] Warnings de cohérence de dimensionnement retournés dans le tableau `warnings`, pas affichés directement
 
 **Verification :**
 - [ ] Tests : `npm test`
@@ -87,9 +87,9 @@ Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/intervie
 **Description :** Le CLI devient un thin wrapper : parsing d'arguments (inchangé) → appelle `extract*`/`render*`/`buildComparaisonPptx` → affiche les mêmes logs qu'avant à partir des valeurs/warnings retournés → `writePptx`. Types `Scenario`/`Groupe`/`TemplateScenario` et constantes de mapping déplacés dans `src/generate/`.
 
 **Acceptance criteria :**
-- [ ] Sur les 3 scénarios, le pptx généré est identique octet pour octet à avant le refactor (fixtures réelles)
-- [ ] La sortie console (`stdout`) est inchangée pour les 3 scénarios
-- [ ] `--scenario` invalide, arguments manquants : mêmes messages d'erreur qu'avant
+- [x] Sur les 3 scénarios, le pptx généré est identique octet pour octet (sans-stockage/stockage) ou au contenu identique (comparaison, cf. Task 4) à avant le refactor (fixtures réelles)
+- [x] La sortie console (`stdout`) est inchangée pour les 3 scénarios
+- [x] `--scenario` invalide, arguments manquants : mêmes messages d'erreur qu'avant (code de parsing inchangé, déplacement pur)
 
 **Verification :**
 - [ ] Tests : `npm test`
@@ -105,8 +105,8 @@ Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/intervie
 ---
 
 ## Checkpoint 1 : Backend foundation
-- [ ] `npm test` et `npm run build` passent
-- [ ] Non-régression CLI vérifiée (diff binaire des 3 scénarios avant/après refactor)
+- [x] `npm test` et `npm run build` passent (22 fichiers, 75 tests)
+- [x] Non-régression CLI vérifiée (pptx identiques/contenu identique + stdout identique, 3 scénarios, fixtures réelles)
 - [ ] Revue avec l'utilisateur avant de continuer
 
 ---

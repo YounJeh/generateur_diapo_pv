@@ -40,7 +40,7 @@ Confirmé via `/interview-me` (voir résumé ci-dessous).
 
 ### Phase 0 : Environnement
 
-- [ ] **Task 1** : Installer LibreOffice Impress (`libreoffice-impress`) via apt dans le worktree courant + ajouter l'installation au devcontainer (`postCreateCommand` ou feature apt dans `.devcontainer/devcontainer.json`) pour qu'elle survive à un rebuild.
+- [x] **Task 1** : Installer LibreOffice Impress (`libreoffice-impress`) via apt dans le worktree courant + ajouter l'installation au devcontainer (`postCreateCommand` ou feature apt dans `.devcontainer/devcontainer.json`) pour qu'elle survive à un rebuild.
 
 **Acceptance criteria :**
 - `soffice --version` fonctionne dans le shell courant
@@ -60,15 +60,15 @@ Confirmé via `/interview-me` (voir résumé ci-dessous).
 
 ### Phase 1 : Service de génération partagé (extraction / rendu), refactor sans régression
 
-- [ ] **Task 2** : `src/generate/extract.ts` — `extractSansStockage(pdfPath, rangees): Promise<SlideValues>` et `extractStockage(pdfPath, rangees): Promise<StorageSlideValues>`, extraits de `runSansStockage`/`runStockage` (partie lecture PDF + `extractFromPdfText(Storage)` + `buildValues`/`buildStorageValues`). Aucun `console.log` dans ce module — retourne uniquement les valeurs.
-- [ ] **Task 3** : `src/generate/render.ts` — `renderSansStockage(values: SlideValues, scenarioNumero?): Pptx` et `renderStockage(pdf: string, values: StorageSlideValues, scenarioNumero?): Promise<Pptx>`, extraits de la partie "application au template" de `runSansStockage`/`runStockage` (ouverture du zip, `buildSlide1Replacements`, `buildSlide2Replacements(Storage)`, rendu graphique, `replaceChartImage`, et pour storage `replaceMonthlyChartImage`). Retourne le zip en mémoire (`Pptx`), pas d'écriture disque.
-- [ ] **Task 4** : `src/generate/comparaison.ts` — `buildComparaisonPptx(groupes: Groupe[]): Promise<{ zip: Pptx; totalSlides: number; warnings: string[] }>`, orchestration extraite de `runComparaison` (boucle groupes/cas, `appendSlides`, `checkDimensioningConsistency`), warnings retournés au lieu de `console.warn`.
-- [ ] **Task 5** : Réécrire `src/cli.ts` pour consommer `src/generate/*` : parse arguments → appelle `extract*`/`render*`/`buildComparaisonPptx` → affiche les mêmes logs qu'avant à partir des valeurs retournées → `writePptx`. Types `Scenario`/`Groupe`/`TemplateScenario`/constantes de mapping déplacés dans `src/generate/` (réexportés ou dupliqués côté CLI si besoin de l'usage/parsing uniquement).
+- [x] **Task 2** : `src/generate/extract.ts` — `extractSansStockage(pdfPath, rangees): Promise<SlideValues>` et `extractStockage(pdfPath, rangees): Promise<StorageSlideValues>`, extraits de `runSansStockage`/`runStockage` (partie lecture PDF + `extractFromPdfText(Storage)` + `buildValues`/`buildStorageValues`). Aucun `console.log` dans ce module — retourne uniquement les valeurs.
+- [x] **Task 3** : `src/generate/render.ts` — `renderSansStockage(values: SlideValues, scenarioNumero?): Pptx` et `renderStockage(pdf: string, values: StorageSlideValues, scenarioNumero?): Promise<Pptx>`, extraits de la partie "application au template" de `runSansStockage`/`runStockage` (ouverture du zip, `buildSlide1Replacements`, `buildSlide2Replacements(Storage)`, rendu graphique, `replaceChartImage`, et pour storage `replaceMonthlyChartImage`). Retourne le zip en mémoire (`Pptx`), pas d'écriture disque.
+- [x] **Task 4** : `src/generate/comparaison.ts` — `buildComparaisonPptx(groupes: Groupe[]): Promise<{ zip: Pptx; totalSlides: number; warnings: string[] }>`, orchestration extraite de `runComparaison` (boucle groupes/cas, `appendSlides`, `checkDimensioningConsistency`), warnings retournés au lieu de `console.warn`.
+- [x] **Task 5** : Réécrire `src/cli.ts` pour consommer `src/generate/*` : parse arguments → appelle `extract*`/`render*`/`buildComparaisonPptx` → affiche les mêmes logs qu'avant à partir des valeurs retournées → `writePptx`. Types `Scenario`/`Groupe`/`TemplateScenario`/constantes de mapping déplacés dans `src/generate/` (réexportés ou dupliqués côté CLI si besoin de l'usage/parsing uniquement).
 
 **Acceptance criteria (Phase 1) :**
-- Sur les 3 scénarios (sans-stockage, stockage, comparaison), le pptx généré par `dist/cli.js` après refactor est **identique octet pour octet** à celui généré avant refactor, sur les mêmes fixtures réelles (`test/data/`)
-- La sortie console (`stdout`) du CLI est inchangée pour les 3 scénarios
-- `npm test` passe entièrement (aucun test existant modifié sauf déplacement de code testé, comportement identique)
+- [x] Sur sans-stockage et stockage, le pptx généré par `dist/cli.js` après refactor est **identique octet pour octet** à celui généré avant refactor. Sur comparaison, **contenu identique** (diff -rq sur les zips désarchivés) — l'égalité octet pour octet n'est pas atteignable : les timestamps qu'AdmZip écrit dans les entrées ajoutées par `appendSlides` sont non déterministes, y compris avant ce refactor (deux exécutions successives du CLI non modifié produisent déjà des fichiers différents à ce niveau). Vérifié sur les mêmes fixtures réelles (`test/data/`)
+- [x] La sortie console (`stdout`) du CLI est inchangée pour les 3 scénarios
+- [x] `npm test` passe entièrement (aucun test existant modifié sauf déplacement de code testé, comportement identique)
 
 **Verification :**
 - Tests : `npm test`
@@ -84,8 +84,8 @@ Confirmé via `/interview-me` (voir résumé ci-dessous).
 ---
 
 ### Checkpoint 1 : Backend foundation
-- [ ] `npm test` et `npm run build` passent
-- [ ] Non-régression CLI vérifiée (diff binaire des 3 scénarios avant/après)
+- [x] `npm test` et `npm run build` passent
+- [x] Non-régression CLI vérifiée (pptx identiques byte-à-byte sans-stockage/stockage, contenu identique comparaison ; stdout identique) sur les 3 scénarios, fixtures réelles
 - [ ] Revue avec l'utilisateur avant de continuer
 
 ---
