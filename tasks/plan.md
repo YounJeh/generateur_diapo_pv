@@ -1,253 +1,279 @@
-# Implementation Plan: Scénario "avec stockage" (extension du générateur diapo PV)
+# Implementation Plan : Interface web locale "PV Studio"
 
 ## Overview
 
-Étendre l'outil CLI existant (qui génère déjà le pptx du scénario "sans stockage" en production) pour supporter un second scénario, "avec stockage" : nouveau template pptx (3 slides), nouveau PDF SolarEdge source, deux valeurs calculées spécifiques (taux d'autoconsommation plafonné à "+95", taux d'autoproduction combiné PV+stockage), et un graphique annuel à 3 segments par barre au lieu de 2. Sélection du scénario via un nouveau flag CLI `--scenario`. Le scénario "sans stockage" existant doit continuer à fonctionner sans aucune régression (aucun test existant ne doit changer de comportement).
+Ajouter une interface web locale (frontend Vite+React + backend Express) par-dessus le générateur pptx existant, pour piloter les 3 scénarios (sans-stockage, avec-stockage, comparaison à N groupes) depuis un navigateur au lieu de la CLI. Les templates pptx ne sont plus fournis par l'utilisateur : ils restent ceux déjà présents dans `assets/templates/`, sélectionnés automatiquement selon le scénario (comme le fait déjà `TEMPLATE_PPTX` dans `src/cli.ts`). Après génération, le pptx est converti en images de slides (LibreOffice headless) pour un aperçu fidèle dans le navigateur, avant téléchargement.
 
-Confirmé via `/interview-me` (voir résumé ci-dessous) puis vérifié par inspection directe des fixtures réelles (`test/data/scenario 1 avec stockage Projet_Ombriere_Rixhiem.pptx`, `test/data/D_26_1223_Intermarche_Rixhiem_3_Omb_avec_stockage_V2.pdf`).
+Confirmé via `/interview-me` (voir résumé ci-dessous).
 
 ## Décisions confirmées avec l'utilisateur (via /interview-me)
 
-- **Slide 3 du template storage ("ÉNERGIE MENSUELLE ESTIMÉE") : hors périmètre, non traitée du tout.** Elle reste dans le pptx de sortie strictement identique à l'original (comme n'importe quelle partie non touchée).
-- **Slide 1 : traitement identique à l'existant**, `buildSlide1Replacements` est réutilisé tel quel (mêmes textes de run "SCENARIO 1 : Ombrières de 350kWc" etc., mêmes valeurs `puissanceInstallee`/`rangees`).
-- **Taux d'autoconsommation (storage)** = `%vers-bâtiment + %vers-stockage`. Si le résultat est **≥ 95** (couvre aussi un éventuel dépassement de 100 par arrondi), affichage figé `"+95"` au lieu du nombre exact. Sinon, affichage du nombre exact tel quel. *(Attention : c'est l'inverse de la formulation initiale de la demande utilisateur — confirmé explicitement pendant l'interview.)*
-- **Taux d'autoproduction (storage)** = `%depuis-PV + %depuis-stockage` (ex. 38+14=52). Toujours affiché tel quel, **pas** de plafond "+95" pour celui-ci.
-- **Graphique annuel (slide 2)** : étendre `annualResultsChart.ts` pour accepter 2 **ou** 3 segments par barre, même style visuel (couleurs, barres empilées, longueur proportionnelle au MWh). **Ne pas** réintroduire le pipeline "screenshot/crop PDF" retiré précédemment (commit "Remove the unused PDF-crop chart pipeline").
-- **Sélection du scénario** : nouveau flag CLI `--scenario` (`sans-stockage` par défaut = comportement actuel inchangé, ou `stockage`).
+- **Aperçu = rendu fidèle des slides réelles** (images), pas un résumé texte des données — via LibreOffice headless (`libreoffice-impress`), avec un process `soffice` persistant pour éviter le coût de démarrage à froid (2-5s) sur les conversions suivantes (~200-500ms).
+- **Comparaison = N groupes dynamiques**, pas limité à 2 PDF comme dans la maquette d'origine — mapping direct de ce que la CLI sait déjà faire (`--groupe-N-*`).
+- **Stack** : React via Vite pour le frontend (état non trivial : stepper, groupes dynamiques, upload multi-fichiers, statut génération/aperçu).
+- **Usage strictement local**, un seul utilisateur, pas d'authentification, pas de déploiement.
+- **Templates non uploadables** : la notion "Mes modèles" de la maquette d'origine est supprimée, hors scope.
 
-## Faits vérifiés sur les fixtures réelles "avec stockage"
+## Faits vérifiés sur le code existant
 
-- Template pptx (`scenario 1 avec stockage Projet_Ombriere_Rixhiem.pptx`) : **3 slides** (`slide1.xml`, `slide2.xml`, `slide3.xml`). Slide 3 = "ÉNERGIE MENSUELLE ESTIMÉE" (hors périmètre).
-- PDF (`D_26_1223_Intermarche_Rixhiem_3_Omb_avec_stockage_V2.pdf`) fait **8 pages** ; seules les pages 1-2 sont utilisées (page 3 = graphique mensuel, hors périmètre).
-- Page 1 (texte réel) : `744 Modules PV`, `343,74 MWh` (Production D'énergie Annuelle), `76 %` (Ratio De Performance, entier). **Mêmes libellés/structure que le PDF sans-stockage** → les regex existantes (`extractNombreModules`, `extractProductionAnnuelleMwh`, `extractRatioDePerformance`) sont réutilisables telles quelles, aucune modification requise.
-- Page 2 (texte réel) : `Production 344,98 MWh` / `Vers le bâtiment 247,42 MWh (72%)` / `Vers le stockage 93,88 MWh (27%)` / `Vers le réseau 3,20 MWh (1%)` ; `Consommation 658,15 MWh` / `Depuis le PV 247,42 MWh (38%)` / `Depuis le stockage 91,64 MWh (14%)` / `du réseau 316,11 MWh (48%)` ; ligne récapitulative `"52% Énergie provenant de panneaux solaires avec stockage"` (cohérente avec 38+14=52, non utilisée comme source d'extraction — on garde la méthode par sommation des valeurs itemisées, cohérente avec le style existant).
-  - Les libellés "Vers le bâtiment", "Vers le réseau", "Depuis le PV", "du réseau" ont la **même structure** que le PDF sans-stockage → `extractTauxAutoconsommation`, `extractSurplusProduction`, `extractTauxAutoproduction`, `extractVersBatimentMwh`, `extractVersReseauMwh`, `extractDepuisPvMwh`, `extractDuReseauMwh`, `extractProductionTotaleMwh`, `extractConsommationTotaleMwh` sont **tous réutilisables tels quels**.
-  - Seuls 4 champs sont réellement nouveaux : `versStockageMwh`, `versStockagePct`, `depuisStockageMwh`, `depuisStockagePct` (labels "Vers le stockage" / "Depuis le stockage", non ambigus avec les labels existants).
-- Textes de run réels de `slide2.xml` (storage, vérifiés par dézippage) à faire correspondre exactement dans la nouvelle table de remplacement :
-  - `"Étude de production – Ombrières 350 kWc avec stockage "` (titre)
-  - `"350 kWc"` (occurrences multiples, hors titre)
-  - `"744"` (nombre de modules)
-  - `"347 760 kWh"` (production)
-  - `"77,0 %"` (ratio de performance)
-  - `"Taux d’autoconsommation : +95%"` (**sans espace** avant `%`, apostrophe typographique `’`)
-  - `"+95 % de la production de votre centrale photovoltaïque"` (**avec espace**, run qui suit `"Vous consommez directement "`)
-  - `"Taux d’autoproduction : 52%"` (sans espace)
-  - `"52 % de vos besoins en électricité"` (avec espace, run qui suit `"Vos ombrières photovoltaïques couvrent "`)
-  - **Aucun run "surplus"** dans ce template (contrairement au sans-stockage) — ne rien chercher à ce sujet, 9 correspondances au total (vs 11 pour le sans-stockage).
-- Image du graphique slide 2 (storage) : `ppt/media/image5.png`, référencée via `rId3` dans `slide2.xml.rels` (au lieu de `image8.png`/`rId3` en sans-stockage — même `rId` mais fichier différent puisque ce sont deux pptx distincts).
-- **`<a:srcRect>` du placeholder image slide 2 storage est déjà `b="0" l="0" r="0" t="0"`** (contrairement au sans-stockage où l'original était rogné `b="14310" l="0" r="5625" t="0"`) — remettre à 0 reste correct et idempotent, pas de risque de régression en réutilisant `replaceChartImage`.
-- **Cadre image (`<a:off>`/`<a:ext>`) différent entre les deux templates** : storage `off x="685800" y="2597086"`, `ext cx="10820400" cy="2493845"` (ratio ≈ 4,339) vs sans-stockage `ext cx="10718018" cy="2219711"` (ratio ≈ 4,828). **`annualResultsChart.ts` doit donc accepter un ratio de cadre paramétrable** (actuellement une constante `FRAME_RATIO` figée sur le cas sans-stockage) — sinon l'image générée pour le storage sera visuellement étirée/déformée une fois insérée.
-- `dist/` contient des artefacts de build obsolètes (`chartBounds.js`, `renderChart.js`) issus d'un pipeline "screenshot PDF" **explicitement retiré** du code source (commit `b2d733a`, dossier gitignored) — ne pas s'y référer, ne pas les reconstruire.
-- `test/` et `CLAUDE.md` sont **untracked** sur `main` (fichiers locaux, probablement volontairement non commités — données clients réelles). Ne pas forcer leur ajout au dépôt sans demande explicite.
+- Le projet est actuellement 100% CLI (`src/cli.ts`), aucune brique web. Build via `tsc` (tsconfig `rootDir: src`, `outDir: dist`, `module/moduleResolution: NodeNext`). Tests Vitest contre fixtures réelles (`test/data/`, non commité — probablement des données clients).
+- `src/cli.ts` contient toute la logique d'orchestration dans des fonctions module-level (`runSansStockage`, `runStockage`, `runComparaison`, `run`) qui mélangent extraction, calcul, application au template pptx, **et** `console.log` d'affichage — à séparer pour être réutilisable par un serveur HTTP.
+- Modules métier réutilisables tels quels (aucune modification requise) : `buildValues`/`buildStorageValues` (`calc.ts`), `extractFromPdfText(Storage)` (`pdf/extractValues.ts`), `getPageTexts`/`openPdfPage` (`pdf/reader.ts`, `pdf/document.ts`), `renderAnnualResultsChart(Storage)` (`chart/annualResultsChart.ts`), `openPptx`/`writePptx`/`getEntryText`/`setEntryText` (`pptx/zip.ts`), `replaceRuns` (`pptx/replaceText.ts`), `buildSlide1Replacements`/`buildSlide2Replacements(Storage)`/`buildSlide3ReplacementsStorage` (`pptx/slide*Map*.ts`), `replaceChartImage`/`replaceMonthlyChartImage` (`pptx/replaceImage.ts`), `appendSlides` (`pptx/mergeSlides.ts`), `checkDimensioningConsistency` (`dimensioningCheck.ts`), `findMonthlyEnergyChartBounds`/`renderChartImage` (pipeline slide 3 storage).
+- LibreOffice n'est pas installé sur cette machine/devcontainer (`.devcontainer/devcontainer.json`, image `mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm`). `sudo`/`apt` sont disponibles dans le worktree courant.
+- Le canvas natif (`canvas` npm) est déjà une dépendance système du projet (rendu des graphiques) — installer une dépendance système supplémentaire (LibreOffice) est cohérent avec l'existant.
+- `.gitignore` ignore déjà `dist/`, `output/`, `test/output/` — même logique à appliquer aux nouveaux dossiers générés (`runtime/`, `web/dist/`, `web/node_modules/`).
+- Convention du dépôt : `tasks/plan.md`/`tasks/todo.md` documentent la fonctionnalité **en cours**, remplacés (pas cumulés) à chaque nouvelle fonctionnalité planifiée — l'historique reste accessible via `git log`.
 
 ## Architecture Decisions
 
-- **Réutilisation maximale de l'existant** : `buildSlide1Replacements`, toutes les fonctions d'extraction page 1/2 déjà écrites, `replaceRuns`, `zip.ts` sont réutilisés **tels quels**, sans modification, pour éviter toute régression sur le scénario sans-stockage.
-- **Nouveaux fichiers plutôt que branches conditionnelles internes** pour tout ce qui diffère structurellement : `src/pptx/slide2MapStorage.ts` (nouvelle table de remplacement, 9 correspondances) plutôt que d'ajouter un paramètre `scenario` dans `slide2Map.ts` — garde chaque fichier simple et testable isolément, cohérent avec le style actuel (un fichier = une responsabilité).
-- **`annualResultsChart.ts` refactorisé en interne** : extraction d'une fonction de rendu générique acceptant un nombre variable de segments par ligne (`Segment[]` au lieu du tuple fixe `[Segment, Segment]`) et un `frameRatio` paramétrable. Les deux exports publics existant/nouveau (`renderAnnualResultsChart` pour 2 segments, `renderAnnualResultsChartStorage` pour 3 segments) construisent chacun leurs `Row[]` puis appellent le même moteur de dessin interne. **Signature et comportement de `renderAnnualResultsChart` inchangés** (ratio par défaut = constante actuelle) → zéro régression sur les tests existants.
-- **Nouvelle couleur pour le segment "stockage"** (2 nouvelles couleurs en réalité : une pour "Vers le stockage" côté Production, une pour "Depuis le stockage" côté Consommation) : à déterminer en échantillonnant les couleurs réelles du graphique vectoriel du PDF storage (page 2), en suivant la même méthodologie que celle déjà appliquée aux couleurs bâtiment/réseau/PV/réseau existantes (cf. commit "Match chart text color to the PDF's actual fill color per item"). Décision reportée à la tâche dédiée (Task 8) plutôt que devinée ici.
-- **`replaceImage.ts` généralisé par un paramètre optionnel** `imageEntry` (défaut = constante actuelle `ppt/media/image8.png`) plutôt qu'une nouvelle fonction dupliquée — la logique (reset `srcRect`, remplacement des octets) est strictement identique entre les deux scénarios, seul le chemin de l'entrée zip change.
-- **CLI** : ajout d'un flag `--scenario` (`sans-stockage` par défaut ou `stockage`), qui sélectionne : le template pptx, la fonction d'extraction (`extractFromPdfText` vs `extractFromPdfTextStorage`), la fonction de calcul (`buildValues` vs `buildStorageValues`), la table de remplacement slide 2, la fonction de rendu du graphique, et l'entrée image à remplacer. Un `switch`/table de dispatch simple, pas de framework/plugin.
-- **Types** : `StorageExtractedValues extends ExtractedValues` (+ 4 champs stockage bruts) et `StorageSlideValues extends StorageExtractedValues` (+ `puissanceInstallee`, `rangees`, + 2 champs calculés `tauxAutoconsommationAffichage: string` et `tauxAutoproductionStockage: number`). `ExtractedValues`/`SlideValues` existants **non modifiés**.
-- **Tests** : mêmes conventions que l'existant — un fichier de test miroir par nouveau module, contre les fixtures réelles (`test/data/...avec stockage...`), pas de mocks. Les tests existants (sans-stockage) doivent continuer à passer sans modification.
+- **Séparation extraction / rendu dans un nouveau module `src/generate/`** : `extract.ts` (lit le PDF, calcule les valeurs, **aucune écriture pptx**), `render.ts` (prend des valeurs déjà calculées + applique au template pptx en mémoire), `comparaison.ts` (orchestration N-groupes au-dessus des deux). Cette séparation est nécessaire pour l'étape "Vérifier les données" de l'UI (afficher les valeurs extraites avant de générer le pptx) — le CLI actuel fait les deux d'un coup, sans point d'arrêt intermédiaire.
+- **`src/cli.ts` devient un thin wrapper** sur `src/generate/*` : parsing d'arguments + appel des fonctions extraites + `console.log` des valeurs retournées + écriture disque. Comportement et sortie strictement inchangés (non-régression vérifiée par diff binaire des pptx générés sur les fixtures réelles, avant/après refactor).
+- **Backend HTTP dans `src/server/`** (même arborescence `src/`, même pipeline de build `tsc`), pas un projet séparé — reste un simple ajout au package Node existant. Nouveau script `dev:server` (`tsx src/server/index.ts`).
+- **Frontend dans `web/`** (répertoire séparé à la racine), projet Vite+React+TS indépendant avec son propre `package.json` — séparation standard entre un package Node/CLI et une app web, évite de mélanger les dépendances navigateur (React, Vite) dans le `package.json` du CLI.
+- **Sessions de fichiers temporaires** : `POST /api/extract` sauvegarde les PDF uploadés dans `runtime/uploads/<sessionId>/` (dossier gitignored) et retourne les valeurs calculées + `sessionId`. `POST /api/generate/:sessionId` réutilise ces fichiers pour éviter un second upload. Un nettoyage simple (best-effort, au démarrage du serveur + TTL) évite l'accumulation.
+- **Conversion pptx → images** : un process `soffice --headless` démarré une fois (profil utilisateur isolé via `-env:UserInstallation=file://<tmp>`), les appels `soffice --convert-to png --outdir <dir> <pptx>` suivants réutilisent cette instance déjà chargée (comportement natif de LibreOffice quand un process headless tourne déjà avec le même profil) — pas de dépendance npm supplémentaire, juste `child_process`.
+- **Pas de champ éditable dans l'étape "Vérifier les données"** : les valeurs affichées sont en lecture seule (aucune valeur du mock fourni par l'utilisateur ne suggérait de champ éditable à cette étape, hormis les rangées déjà saisies en étape 1). Si le besoin apparaît plus tard, ce sera une itération séparée.
+- **`npm run dev` unique** à la racine (nouvelle dépendance `concurrently`) lance serveur Express (`tsx --watch`) + Vite dev server (proxy `/api` vers `http://localhost:3001`), pour un flux de développement fluide en une commande.
 
 ## Task List
 
-### Phase 1 : Extraction augmentée (types + regex)
+### Phase 0 : Environnement
 
-- [x] **Task 1** : Types storage (`src/types.ts`) — ajouter `StorageExtractedValues` (extends `ExtractedValues` + `versStockageMwh: string`, `versStockagePct: number`, `depuisStockageMwh: string`, `depuisStockagePct: number`) et `StorageSlideValues` (extends `StorageExtractedValues` + `puissanceInstallee: number`, `rangees: number`, `tauxAutoconsommationAffichage: string`, `tauxAutoproductionStockage: number`). `ExtractedValues`/`SlideValues` inchangés.
-- [x] **Task 2** : Nouveaux extracteurs regex (`src/pdf/extractValues.ts`) — `extractVersStockageMwh`, `extractVersStockagePct`, `extractDepuisStockageMwh`, `extractDepuisStockagePct` (même style fail-fast que l'existant), + `extractFromPdfTextStorage(page1Text, page2Text): StorageExtractedValues` qui combine `extractFromPdfText(...)` (réutilisé tel quel) avec les 4 nouveaux champs.
+- [ ] **Task 1** : Installer LibreOffice Impress (`libreoffice-impress`) via apt dans le worktree courant + ajouter l'installation au devcontainer (`postCreateCommand` ou feature apt dans `.devcontainer/devcontainer.json`) pour qu'elle survive à un rebuild.
 
-**Acceptance criteria (Phase 1) :**
-- [x] Sur le texte réel des pages 1-2 de `D_26_1223_Intermarche_Rixhiem_3_Omb_avec_stockage_V2.pdf` : `versStockageMwh="93,88"`, `versStockagePct=27`, `depuisStockageMwh="91,64"`, `depuisStockagePct=14` (+ les champs hérités : modules=744, production="343,74", ratio="76", tauxAutoconsommation=72, surplusProduction=1, tauxAutoproduction=38, productionTotaleMwh="344,98", consommationTotaleMwh="658,15", versBatimentMwh="247,42", versReseauMwh="3,20", depuisPvMwh="247,42", duReseauMwh="316,11")
-- [x] Une regex qui ne matche rien lève une erreur explicite nommant le champ
-- [x] Aucune régression sur `extractFromPdfText` existant (tests sans-stockage inchangés)
+**Acceptance criteria :**
+- `soffice --version` fonctionne dans le shell courant
+- Conversion manuelle d'un pptx existant (`output/*.pptx`) en PNG via `soffice --headless --convert-to png --outdir /tmp/test <fichier>` produit un ou plusieurs PNG valides
+- `.devcontainer/devcontainer.json` (ou un `Dockerfile` associé) documente l'installation pour les futurs rebuilds
 
 **Verification :**
-- [x] Tests : `npm test` (nouveau `tests/pdf/extractValues.storage.test.ts` + tests existants toujours verts)
-- [x] Build : `npm run build`
+- Manuel : commandes ci-dessus exécutées avec succès
 
 **Dependencies :** Aucune
 
-**Files likely touched :** `src/types.ts`, `src/pdf/extractValues.ts`, `tests/pdf/extractValues.storage.test.ts`
-
-**Estimated scope :** M
-
----
-
-### Checkpoint 1 : Extraction
-- [x] `npm test` passe entièrement (existants + nouveaux)
-- [x] Les 4 nouvelles valeurs + les valeurs héritées correspondent exactement aux valeurs vérifiées ci-dessus
-- [x] Revue avec l'utilisateur avant de continuer
-
----
-
-### Phase 2 : Calcul des valeurs dérivées
-
-- [x] **Task 3** : Fonctions de calcul storage (`src/calc.ts`) — `tauxAutoconsommationAffichage(tauxAutoconsommation: number, versStockagePct: number): string` (total = somme ; si `total >= 95`, retourne `"+95"` ; sinon `String(total)`) ; `tauxAutoproductionStockage(tauxAutoproduction: number, depuisStockagePct: number): number` (somme simple) ; `buildStorageValues(extracted: StorageExtractedValues, rangees: number): StorageSlideValues` (assemble `puissanceInstallee` via la fonction existante `puissanceInstallee()` réutilisée telle quelle + les 2 valeurs dérivées ci-dessus).
-
-**Acceptance criteria :**
-- [x] `tauxAutoconsommationAffichage(72, 27)` === `"+95"` (99 ≥ 95)
-- [x] `tauxAutoconsommationAffichage(50, 30)` === `"80"` (80 < 95, cas limite à couvrir même s'il n'apparaît pas dans la fixture actuelle)
-- [x] `tauxAutoconsommationAffichage(60, 40)` === `"+95"` (100, cas de dépassement par arrondi)
-- [x] `tauxAutoproductionStockage(38, 14)` === `52`
-- [x] `buildStorageValues(...)` sur les valeurs extraites de la fixture réelle produit `puissanceInstallee=350` (744×470/1000=349,68→ceil=350), `tauxAutoconsommationAffichage="+95"`, `tauxAutoproductionStockage=52`
-- [x] Aucune régression sur `puissanceInstallee`/`buildValues` existants
-
-**Verification :**
-- [x] Tests : `npm test` (nouveau `tests/calc.storage.test.ts`)
-- [x] Build : `npm run build`
-
-**Dependencies :** Task 1, Task 2
-
-**Files likely touched :** `src/calc.ts`, `tests/calc.storage.test.ts`
+**Files likely touched :** `.devcontainer/devcontainer.json` (et/ou nouveau `Dockerfile`)
 
 **Estimated scope :** S
 
 ---
 
-### Phase 3 : Table de remplacement texte slide 2 (storage)
+### Phase 1 : Service de génération partagé (extraction / rendu), refactor sans régression
 
-- [x] **Task 4** : `src/pptx/slide2MapStorage.ts` — `buildSlide2ReplacementsStorage(values: StorageSlideValues): Map<string,string>`, 9 correspondances exactes de run listées dans "Faits vérifiés" ci-dessus (titre avec puissance, "350 kWc", "744", "347 760 kWh", "77,0 %", "Taux d'autoconsommation : +95%" → utilise `tauxAutoconsommationAffichage` tel quel comme valeur insérée sans `+` additionnel si non plafonné, "+95 % de la production..." idem, "Taux d'autoproduction : 52%" → `tauxAutoproductionStockage`, "52 % de vos besoins...").
+- [ ] **Task 2** : `src/generate/extract.ts` — `extractSansStockage(pdfPath, rangees): Promise<SlideValues>` et `extractStockage(pdfPath, rangees): Promise<StorageSlideValues>`, extraits de `runSansStockage`/`runStockage` (partie lecture PDF + `extractFromPdfText(Storage)` + `buildValues`/`buildStorageValues`). Aucun `console.log` dans ce module — retourne uniquement les valeurs.
+- [ ] **Task 3** : `src/generate/render.ts` — `renderSansStockage(values: SlideValues, scenarioNumero?): Pptx` et `renderStockage(pdf: string, values: StorageSlideValues, scenarioNumero?): Promise<Pptx>`, extraits de la partie "application au template" de `runSansStockage`/`runStockage` (ouverture du zip, `buildSlide1Replacements`, `buildSlide2Replacements(Storage)`, rendu graphique, `replaceChartImage`, et pour storage `replaceMonthlyChartImage`). Retourne le zip en mémoire (`Pptx`), pas d'écriture disque.
+- [ ] **Task 4** : `src/generate/comparaison.ts` — `buildComparaisonPptx(groupes: Groupe[]): Promise<{ zip: Pptx; totalSlides: number; warnings: string[] }>`, orchestration extraite de `runComparaison` (boucle groupes/cas, `appendSlides`, `checkDimensioningConsistency`), warnings retournés au lieu de `console.warn`.
+- [ ] **Task 5** : Réécrire `src/cli.ts` pour consommer `src/generate/*` : parse arguments → appelle `extract*`/`render*`/`buildComparaisonPptx` → affiche les mêmes logs qu'avant à partir des valeurs retournées → `writePptx`. Types `Scenario`/`Groupe`/`TemplateScenario`/constantes de mapping déplacés dans `src/generate/` (réexportés ou dupliqués côté CLI si besoin de l'usage/parsing uniquement).
 
-**Acceptance criteria :**
-- [x] Les 9 clés correspondent exactement (apostrophe `’`, espaces) aux `<a:t>` réels de `slide2.xml` du template storage (vérifié par un test qui dézippe la fixture réelle, comme `tests/pptx/slide2Map.test.ts` existant)
-- [x] Avec les valeurs de la fixture réelle (`tauxAutoconsommationAffichage="+95"`, `tauxAutoproductionStockage=52`), la map produit `"Taux d’autoconsommation : +95%"` (identique au défaut, cas plafonné) et `"Taux d’autoproduction : 52%"`
-- [x] Avec une valeur `tauxAutoconsommationAffichage="80"` (cas non plafonné, test synthétique), la map produit `"Taux d’autoconsommation : 80%"` (pas de `+`)
-- [x] Aucun texte "surplus" recherché ou produit (n'existe pas dans ce template)
+**Acceptance criteria (Phase 1) :**
+- Sur les 3 scénarios (sans-stockage, stockage, comparaison), le pptx généré par `dist/cli.js` après refactor est **identique octet pour octet** à celui généré avant refactor, sur les mêmes fixtures réelles (`test/data/`)
+- La sortie console (`stdout`) du CLI est inchangée pour les 3 scénarios
+- `npm test` passe entièrement (aucun test existant modifié sauf déplacement de code testé, comportement identique)
 
 **Verification :**
-- [x] Tests : `npm test` (nouveau `tests/pptx/slide2MapStorage.test.ts`, même style que `slide2Map.test.ts`)
-- [x] Build : `npm run build`
+- Tests : `npm test`
+- Build : `npm run build`
+- Manuel : générer les 3 scénarios avant/après (`git stash`/`git stash pop` sur `src/`, ou branche de comparaison) et `diff`/hash des fichiers de sortie
 
-**Dependencies :** Task 3
+**Dependencies :** Aucune
 
-**Files likely touched :** `src/pptx/slide2MapStorage.ts`, `tests/pptx/slide2MapStorage.test.ts`
+**Files likely touched :** `src/generate/extract.ts`, `src/generate/render.ts`, `src/generate/comparaison.ts`, `src/generate/types.ts` (si utile pour `Scenario`/`Groupe`), `src/cli.ts`
+
+**Estimated scope :** L — *si ça dépasse une session, traiter Task 2+3 (sans-stockage/stockage) dans un tour, Task 4 (comparaison) + Task 5 (cli.ts) dans un second.*
+
+---
+
+### Checkpoint 1 : Backend foundation
+- [ ] `npm test` et `npm run build` passent
+- [ ] Non-régression CLI vérifiée (diff binaire des 3 scénarios avant/après)
+- [ ] Revue avec l'utilisateur avant de continuer
+
+---
+
+### Phase 2 : Service d'aperçu (pptx → images)
+
+- [ ] **Task 6** : `src/preview/sofficeConverter.ts` — démarre un process `soffice --headless` persistant au premier besoin (profil utilisateur isolé dans un dossier temporaire dédié, pour ne pas interférer avec une éventuelle install LibreOffice "normale" de la machine), expose `convertPptxToPngs(pptxPath: string, outDir: string): Promise<string[]>` (une image PNG par slide, ordre garanti). Arrêt propre du process à la fermeture du serveur (`process.on("exit"/"SIGINT"...)`).
+- [ ] **Task 7** : Vérification du service de conversion sur les 3 scénarios (nombre de PNG produits = nombre de slides attendu : 2/3/4), mesure du gain de latence 1er appel vs appels suivants.
+
+**Acceptance criteria :**
+- `convertPptxToPngs` sur un pptx sans-stockage produit 2 PNG, avec-stockage 3 PNG, comparaison (2 groupes) 4 PNG (et plus pour N groupes, proportionnel)
+- Les PNG sont lisibles (dimensions non nulles) et dans l'ordre des slides
+- Un 2ᵉ appel (process déjà démarré) est nettement plus rapide que le 1er (mesuré manuellement, ordre de grandeur documenté dans le code ou la PR)
+
+**Verification :**
+- Tests : `npm test` (nouveau `tests/preview/sofficeConverter.test.ts` si l'environnement CI dispose de LibreOffice ; sinon test skip conditionnel + vérification manuelle documentée)
+- Manuel : conversion des pptx de `output/` existants
+
+**Dependencies :** Task 1 (LibreOffice installé), Task 3/4 (pptx à convertir)
+
+**Files likely touched :** `src/preview/sofficeConverter.ts`, `tests/preview/sofficeConverter.test.ts`
 
 **Estimated scope :** M
 
 ---
 
-### Checkpoint 2 : Textes
-- [x] `npm test` passe entièrement
-- [x] Génération d'un remplacement de test sur `slide1.xml`/`slide2.xml` du template storage réel (via `replaceRuns` existant + les deux maps) : tous les remplacements trouvés, aucun `missing`
-- [x] Revue avec l'utilisateur avant de continuer
+### Checkpoint 2 : Aperçu
+- [ ] Conversion pptx→images validée sur les 3 scénarios
+- [ ] Revue avec l'utilisateur avant de continuer
 
 ---
 
-### Phase 4 : Graphique annuel à 3 segments
+### Phase 3 : API Express
 
-- [x] **Task 5** : Refactor interne de `src/chart/annualResultsChart.ts` — remplacer le tuple `segments: [Segment, Segment]` par `segments: Segment[]` dans `Row`, extraire le rendu (boucle segments empilés + légende) dans une fonction interne générique acceptant `rows: [Row, Row]` et un `frameRatio: number` paramétrable (au lieu de la constante `FRAME_RATIO` figée). `renderAnnualResultsChart` (export existant) construit ses 2 lignes à 2 segments comme aujourd'hui et appelle le moteur générique avec le ratio sans-stockage par défaut — **signature et comportement inchangés**.
-- [x] **Task 6** : Échantillonnage des couleurs réelles du graphique storage — inspecter le contenu vectoriel de la page 2 du PDF storage (via `pdfjs-dist`, operator list, même méthode que le commit "Match chart text color...") pour déterminer les couleurs "Vers le stockage" et "Depuis le stockage". Documenter les valeurs hex trouvées en commentaire (comme `PROD_GREEN` etc. existants).
-- [x] **Task 7** : `renderAnnualResultsChartStorage(values: StorageAnnualResultsChartValues, frameRatio?: number): Buffer` (nouvel export dans `annualResultsChart.ts`) — construit 2 lignes à 3 segments (Production : bâtiment/stockage/réseau ; Consommation : PV/stockage/réseau) avec les couleurs de Task 6, appelle le même moteur générique de Task 5, ratio par défaut = celui du cadre storage (10820400/2493845).
+- [ ] **Task 8** : Scaffold serveur (`src/server/app.ts` : app Express + middlewares ; `src/server/index.ts` : `listen`), dépendances `express`, `multer`, `@types/express`, `@types/multer`. Route `GET /api/health` → `{ status: "ok" }`.
+- [ ] **Task 9** : `POST /api/extract` — reçoit `scenario` + fichier(s) PDF (`multer`, stockage disque dans `runtime/uploads/<sessionId>/`) + `rangees` (scénarios simples) ou la liste des groupes (`comparaison`), appelle `src/generate/extract.ts`, répond avec les valeurs calculées par scénario/groupe + `sessionId`. Erreurs (PDF illisible, champ manquant) renvoyées en JSON avec code HTTP explicite.
+- [ ] **Task 10** : `POST /api/generate/:sessionId` — retrouve les fichiers de la session, appelle `render*`/`buildComparaisonPptx`, écrit le pptx dans `runtime/output/<sessionId>.pptx`, appelle `convertPptxToPngs`, répond `{ pptxUrl, previewImageUrls: string[] }`. Sert `runtime/output/` en statique pour le téléchargement et les images.
+- [ ] **Task 11** : Nettoyage best-effort des sessions (`runtime/uploads/`, `runtime/output/`) — purge au démarrage du serveur des dossiers plus vieux qu'un TTL simple (ex. 24h), `runtime/` ajouté au `.gitignore`.
 
 **Acceptance criteria :**
-- [x] `renderAnnualResultsChart(VALUES)` (2 segments, existant) produit un PNG strictement visuellement équivalent à avant (test existant `tests/chart/annualResultsChart.test.ts` passe sans modification)
-- [x] `renderAnnualResultsChartStorage(values)` produit un PNG dont le ratio largeur/hauteur correspond au cadre storage (≈4,339), avec 3 segments visibles par barre, longueur totale des barres toujours proportionnelle au MWh (Consommation ≈ 658/345 ≈ 1,9× Production)
-- [x] Les 3 segments de chaque barre utilisent des couleurs visuellement distinctes (test de présence de ≥3 couleurs de remplissage distinctes sur chaque ligne, en plus du fond)
+- `POST /api/extract` avec une fixture réelle de `test/data/` renvoie les mêmes valeurs que celles affichées par le CLI sur le même fichier
+- `POST /api/generate/:sessionId` après un `extract` réussi produit un pptx téléchargeable identique (mêmes valeurs remplacées) à celui produit par le CLI, et une image par slide
+- Une requête `generate` avec un `sessionId` inconnu/expiré renvoie une erreur 404 explicite
+- `runtime/` n'est jamais commité (vérifié via `.gitignore` + `git status` propre après un cycle extract/generate)
 
 **Verification :**
-- [x] Tests : `npm test` (existant `tests/chart/annualResultsChart.test.ts` inchangé et vert + nouveau `tests/chart/annualResultsChartStorage.test.ts`)
-- [x] Build : `npm run build`
-- [x] Manuel : ouvrir le PNG généré pour le cas storage et vérifier visuellement les 3 segments + légende
+- Tests : `npm test` (tests d'intégration légers sur les routes, via `supertest` ou équivalent, si raisonnable — sinon vérification manuelle via `curl`/Postman documentée)
+- Manuel : cycle complet `extract` → `generate` sur les 3 scénarios via `curl`
 
-**Dependencies :** Task 3 (pour les types de valeurs d'entrée)
+**Dependencies :** Task 5 (generate/), Task 6 (preview)
 
-**Files likely touched :** `src/chart/annualResultsChart.ts`, `tests/chart/annualResultsChart.test.ts` (vérifier non-régression, pas de modif sauf si nécessaire), `tests/chart/annualResultsChartStorage.test.ts`
+**Files likely touched :** `src/server/app.ts`, `src/server/index.ts`, `src/server/routes/extract.ts`, `src/server/routes/generate.ts`, `src/server/sessions.ts`, `.gitignore`
 
-**Estimated scope :** L — *si ça dépasse une session, scinder Task 5 (refactor generique) de Task 7 (nouvel export storage) en deux tours de revue séparés ; Task 6 (couleurs) peut se faire en parallèle de Task 5.*
-
----
-
-### Checkpoint 3 : Graphique
-- [x] `npm test` passe entièrement, y compris le test de non-régression du graphique sans-stockage
-- [x] PNG storage vérifié visuellement (3 segments, bon ratio, bonnes couleurs)
-- [x] Revue avec l'utilisateur avant de continuer
+**Estimated scope :** L — *si ça dépasse une session, scinder Task 8 (scaffold+health) de Task 9 (extract) et Task 10 (generate) en tours séparés.*
 
 ---
 
-### Phase 5 : Remplacement d'image générique
+### Checkpoint 3 : API complète
+- [ ] Cycle `extract`→`generate`→téléchargement validé via `curl` sur les 3 scénarios
+- [ ] Revue avec l'utilisateur avant de continuer
 
-- [x] **Task 8** : Généraliser `src/pptx/replaceImage.ts` — ajouter un paramètre optionnel `imageEntry: string` à `replaceChartImage(zip, newImageBuffer, imageEntry = "ppt/media/image8.png")`. Comportement (reset `srcRect` à 0, remplacement des octets) inchangé. Aucune modification de la signature d'appel existante (paramètre optionnel avec défaut = comportement actuel).
+---
+
+### Phase 4 : Frontend — scaffold
+
+- [ ] **Task 12** : Scaffold `web/` (Vite + React + TS), proxy dev `/api` → `http://localhost:3001` (`vite.config.ts`), structure de dossiers (`src/steps/`, `src/components/`, `src/api/client.ts`), layout de base inspiré de la maquette (topbar avec logo/marque, stepper 3 étapes, disposition principale + panneau latéral récapitulatif) — **recréé**, pas copié du HTML fourni. Palette/typographie librement inspirées (pas de contrainte de pixel-perfect).
 
 **Acceptance criteria :**
-- [x] Appel sans 3ᵉ argument (existant) : comportement strictement identique, test existant `tests/pptx/replaceImage.test.ts` inchangé et vert
-- [x] Appel avec `imageEntry="ppt/media/image5.png"` sur le template storage réel : l'image `image5.png` est remplacée, `srcRect` reste `b="0" l="0" r="0" t="0"` (déjà le cas), `<a:off>`/`<a:ext>` inchangés, toutes les autres entrées du zip identiques octet pour octet
+- `npm --prefix web run dev` démarre un serveur Vite affichant la coquille de l'appli (topbar + stepper + zone de contenu vide/placeholder)
+- Le proxy `/api/health` fonctionne en dev (requête depuis le frontend atteint le serveur Express)
 
 **Verification :**
-- [x] Tests : `npm test` (existant inchangé + nouveau cas storage dans `tests/pptx/replaceImage.test.ts` ou fichier dédié)
-- [x] Build : `npm run build`
+- Manuel : lancer serveur + frontend, vérifier dans le navigateur
 
-**Dependencies :** Aucune (indépendant, peut être fait en parallèle des phases 1-4)
+**Dependencies :** Task 8 (API health)
 
-**Files likely touched :** `src/pptx/replaceImage.ts`, `tests/pptx/replaceImage.test.ts`
-
-**Estimated scope :** S
-
----
-
-### Phase 6 : CLI et orchestration bout-en-bout
-
-- [x] **Task 9** : `src/cli.ts` — ajouter le flag `--scenario` (valeurs autorisées : `sans-stockage` [défaut], `stockage` ; erreur explicite si autre valeur), une table de dispatch par scénario (template pptx, fonction d'extraction, fonction de calcul, table de remplacement slide 2, fonction de rendu du graphique, entrée image), orchestration identique à l'existant sinon (slide 1 toujours via `buildSlide1Replacements`, réutilisé pour les deux scénarios).
-
-**Acceptance criteria :**
-- [x] `node dist/cli.js --pdf <pdf sans-stockage> --rangees 3` (sans `--scenario`, ou `--scenario sans-stockage`) : comportement strictement identique à avant (non-régression)
-- [x] `node dist/cli.js --pdf test/data/D_26_1223_Intermarche_Rixhiem_3_Omb_avec_stockage_V2.pdf --rangees <n> --scenario stockage` produit un pptx sans erreur
-- [x] `--scenario` avec une valeur invalide → message d'erreur clair listant les valeurs autorisées
-- [x] La sortie console liste les valeurs extraites/calculées pour le scénario actif (y compris `tauxAutoconsommationAffichage` et `tauxAutoproductionStockage` pour le storage)
-
-**Verification :**
-- [x] Build : `npm run build`
-- [x] Manuel : exécution complète sur les deux fixtures réelles
-
-**Dependencies :** Task 2, Task 3, Task 4, Task 7, Task 8
-
-**Files likely touched :** `src/cli.ts`
+**Files likely touched :** `web/package.json`, `web/vite.config.ts`, `web/index.html`, `web/src/main.tsx`, `web/src/App.tsx`, `web/src/styles/*`, `web/src/api/client.ts`
 
 **Estimated scope :** M
 
 ---
 
-### Phase 7 : Vérification bout-en-bout et documentation
+### Phase 5 : Frontend — Étape 1 (scénario + upload)
 
-- [x] **Task 10** : Exécution bout-en-bout sur la fixture storage réelle, ouverture du pptx généré (PowerPoint/LibreOffice/Google Slides), vérification manuelle de chaque valeur (slide 1 : puissance/rangées ; slide 2 : puissance, modules, production, ratio, autoconsommation "+95", autoproduction "52", graphique 3 segments), et confirmation que **la slide 3 est strictement identique à l'originale** (hash de l'entrée `ppt/slides/slide3.xml` et de `ppt/media/image11.png` inchangés).
-- [x] **Task 11** : Mise à jour de `README.md` (nouveau flag `--scenario`, exemple de commande pour le scénario storage, description des valeurs "+95"/combinées).
+- [ ] **Task 13** : Étape 1, scénarios simples (`sans-stockage`/`stockage`) — sélecteur des 3 cartes de scénario, champ d'upload PDF unique + champ rangées, activation du bouton "Vérifier les données" seulement si le formulaire est valide.
+- [ ] **Task 14** : Étape 1, scénario `comparaison` — liste dynamique de groupes (bouton "+ ajouter un groupe" / suppression), chaque groupe avec ses rangées + upload PDF sans-stockage et/ou avec-stockage (au moins un des deux requis), validation cohérente avec `parseGroupes` côté serveur.
 
 **Acceptance criteria :**
-- [x] Toutes les valeurs listées dans la demande initiale sont correctement remplacées dans le pptx généré storage
-- [x] `ppt/slides/slide3.xml` et tous les médias de la slide 3 sont identiques octet pour octet à l'original dans le fichier de sortie
-- [x] Mise en forme (polices, couleurs, layout) visuellement identique à l'original partout ailleurs
-- [x] `README.md` documente les deux scénarios
+- Les 3 scénarios sont sélectionnables et affichent les champs pertinents (upload simple pour sans-stockage/stockage, liste de groupes pour comparaison)
+- Impossible d'activer "Vérifier les données" tant que le formulaire du scénario actif n'est pas valide (au moins un PDF requis par cas, rangées > 0)
+- Ajouter/retirer un groupe en mode comparaison fonctionne sans perte des données déjà saisies dans les autres groupes
 
 **Verification :**
-- [x] Manuel : ouverture et inspection visuelle + comparaison de hash pour slide3/image11
-- [x] `npm test` et `npm run build` passent
+- Manuel : test des 3 scénarios dans le navigateur, y compris ajout/suppression de 3+ groupes en comparaison
 
-**Dependencies :** Task 9
+**Dependencies :** Task 12
 
-**Files likely touched :** `README.md`, aucun fichier source (vérification), sortie dans `test/output/` (gitignored)
+**Files likely touched :** `web/src/steps/Step1Scenario.tsx`, `web/src/components/ScenarioCard.tsx`, `web/src/components/UploadField.tsx`, `web/src/components/GroupList.tsx`, `web/src/state/formState.ts` (ou équivalent)
+
+**Estimated scope :** M (par tâche)
+
+---
+
+### Phase 6 : Frontend — Étape 2 (vérification des données)
+
+- [ ] **Task 15** : Étape 2 — au clic sur "Vérifier les données", appelle `POST /api/extract` avec les fichiers/valeurs de l'étape 1, affiche un état de chargement puis les valeurs extraites/calculées (en lecture seule) par scénario/groupe, avec bouton retour (étape 1) et bouton "Générer" (étape 3). Affichage des erreurs serveur (PDF illisible, format inattendu) de façon compréhensible.
+
+**Acceptance criteria :**
+- Les valeurs affichées correspondent exactement à celles que produit le CLI sur la même fixture
+- Une erreur d'extraction (PDF invalide) est affichée clairement, sans crash de l'UI, avec possibilité de revenir à l'étape 1
+- Le retour à l'étape 1 conserve les valeurs déjà saisies
+
+**Verification :**
+- Manuel : test des 3 scénarios avec fixtures réelles + un cas d'erreur (PDF invalide/vide)
+
+**Dependencies :** Task 9 (`/api/extract`), Task 13/14
+
+**Files likely touched :** `web/src/steps/Step2Review.tsx`, `web/src/api/client.ts`
+
+**Estimated scope :** M
+
+---
+
+### Phase 7 : Frontend — Étape 3 (génération, aperçu, téléchargement)
+
+- [ ] **Task 16** : Étape 3 — au clic sur "Générer", appelle `POST /api/generate/:sessionId`, état de chargement (génération pptx + conversion aperçu peuvent prendre quelques secondes), affiche les images de slides renvoyées (grille ou carrousel), bouton de téléchargement du pptx.
+
+**Acceptance criteria :**
+- Après génération, les images affichées correspondent visuellement aux slides réelles du pptx (texte, graphique, mise en page)
+- Le téléchargement produit exactement le fichier servi par `/api/generate` (même contenu)
+- Un échec de génération (ex. LibreOffice indisponible) est affiché clairement sans bloquer le téléchargement du pptx si celui-ci a bien été généré (l'aperçu est un bonus, pas un prérequis au téléchargement)
+
+**Verification :**
+- Manuel : cycle complet upload→vérification→génération→aperçu→téléchargement sur les 3 scénarios, ouverture du pptx téléchargé pour confirmer la cohérence avec l'aperçu affiché
+
+**Dependencies :** Task 10 (`/api/generate`), Task 15
+
+**Files likely touched :** `web/src/steps/Step3Result.tsx`, `web/src/api/client.ts`
+
+**Estimated scope :** M
+
+---
+
+### Checkpoint 4 : Flux complet
+- [ ] Les 3 scénarios sont utilisables de bout en bout dans le navigateur (upload → vérification → génération → aperçu → téléchargement)
+- [ ] Revue avec l'utilisateur avant de continuer
+
+---
+
+### Phase 8 : Intégration finale
+
+- [ ] **Task 17** : Scripts npm racine — `concurrently` en devDependency, `npm run dev` (serveur + frontend en parallèle), `npm run build` (build des deux), `npm start` (sert `web/dist` statiquement depuis Express + API sur un seul port, pour un usage local simple sans deux serveurs séparés). `.gitignore` mis à jour (`web/node_modules/`, `web/dist/`, `runtime/`).
+- [ ] **Task 18** : Mise à jour `README.md` — section "Interface web" (prérequis LibreOffice, `npm install` + `npm --prefix web install`, `npm run dev`, description rapide du flux 3 étapes), CLI existante documentée comme toujours disponible en parallèle.
+- [ ] **Task 19** : Vérification manuelle bout-en-bout finale des 3 scénarios via `npm start` (mode "production locale" à un seul port), avec les fixtures réelles de `test/data/`.
+
+**Acceptance criteria :**
+- `npm run dev` démarre serveur + frontend en une commande, flux complet fonctionnel
+- `npm start` (après `npm run build`) sert l'appli complète sur un seul port, flux complet fonctionnel
+- `README.md` permet à quelqu'un qui ne connaît pas le projet de lancer l'interface web sans aide supplémentaire
+- `git status` reste propre après un cycle complet d'utilisation (rien d'indésirable ajouté au dépôt)
+
+**Verification :**
+- Manuel : suivre `README.md` depuis un clone propre (ou simulation), `npm test`/`npm run build` verts
+
+**Dependencies :** Task 16
+
+**Files likely touched :** `package.json`, `.gitignore`, `README.md`
 
 **Estimated scope :** S
 
 ---
 
 ### Checkpoint final
-- [x] Toutes les acceptance criteria de toutes les tâches sont remplies
-- [x] `npm test` et `npm run build` passent, y compris tous les tests existants du scénario sans-stockage (zéro régression)
-- [x] `README.md` mis à jour
-- [x] Prêt pour `/code-review-and-quality`, puis proposition de PR (selon les instructions du projet)
+- [ ] Toutes les acceptance criteria de toutes les tâches sont remplies
+- [ ] `npm test` et `npm run build` passent, CLI toujours strictement non régressée
+- [ ] Les 3 scénarios fonctionnent de bout en bout via l'UI web (upload réel → aperçu fidèle → téléchargement)
+- [ ] `README.md` à jour
+- [ ] Prêt pour `/code-review-and-quality`, puis proposition de PR
 
 ## Risks and Mitigations
 
 | Risque | Impact | Mitigation |
 |---|---|---|
-| Inversion de la règle "+95" mal comprise (le sens a été explicitement inversé pendant l'interview par rapport à la demande initiale) | Élevé | Règle reformulée et confirmée explicitement avec l'utilisateur ; tests unitaires couvrant les 3 cas (plafonné, non plafonné, dépassement par arrondi) |
-| Refactor de `annualResultsChart.ts` (Task 5) casse le rendu 2-segments existant | Moyen | Test existant `tests/chart/annualResultsChart.test.ts` non modifié doit rester vert tel quel après le refactor ; signature publique inchangée |
-| Couleurs "stockage" mal choisies (pas d'ancrage sur les couleurs réelles du PDF) | Faible-Moyen | Task 6 dédiée à l'échantillonnage des couleurs réelles avant de coder le rendu, même méthode que les couleurs existantes |
-| Ratio de cadre image différent entre les deux templates non pris en compte → image storage étirée | Moyen | Identifié explicitement dans les faits vérifiés ; `frameRatio` paramétrable dès le refactor (Task 5), valeur storage fixée en Task 7 |
-| Régression sur le scénario sans-stockage (déjà en production) pendant les modifications de fichiers partagés (`annualResultsChart.ts`, `replaceImage.ts`, `cli.ts`) | Élevé | Aucun test existant modifié sauf si strictement nécessaire ; tous les paramètres nouveaux sont optionnels avec défaut = comportement actuel ; `npm test` complet à chaque checkpoint |
-| `test/` étant untracked sur git, un `git add -A` accidentel pourrait committer des données clients réelles | Moyen | Ajouts git explicites fichier par fichier (jamais `-A`/`.`), vérification `git status` avant chaque commit |
+| Refactor `src/generate/*` (Phase 1) casse silencieusement un des 3 scénarios déjà en production côté CLI | Élevé | Diff binaire des pptx générés avant/après refactor sur fixtures réelles, `npm test` complet au Checkpoint 1, aucune logique métier réécrite (seulement déplacée) |
+| LibreOffice headless instable/lent en environnement conteneurisé (mémoire, permissions du profil utilisateur) | Moyen | Profil utilisateur isolé dédié, process persistant testé explicitement (Task 6/7) avant de bâtir l'API dessus ; aperçu traité comme optionnel côté UI (le téléchargement du pptx ne dépend pas de la réussite de l'aperçu) |
+| Sessions de fichiers temporaires (`runtime/`) qui s'accumulent ou fuient des données PDF sensibles (clients réels) | Moyen | Dossier gitignored, nettoyage best-effort au démarrage (Task 11), usage strictement local (pas de risque d'exposition réseau externe) |
+| Scope frontend (N-groupes dynamiques + 3 étapes + aperçu) plus gros que prévu, dérive vers une session unique trop longue | Moyen | Découpage vertical par étape (Phase 5/6/7 indépendantes une fois l'API prête), chaque tâche livrable et vérifiable isolément |
+| Confusion entre le `package.json` racine (CLI/serveur) et celui de `web/` (dépendances divergentes, scripts dupliqués) | Faible | Séparation stricte actée en Architecture Decisions ; scripts racine (`Task 17`) qui orchestrent les deux sans les mélanger |
 
 ## Open Questions
 
-- Aucune à ce stade — tous les points bloquants ont été levés avec l'utilisateur via `/interview-me` (règle "+95" inversée et confirmée, formule autoproduction confirmée, slide 3 hors périmètre, extension du renderer canvas plutôt que crop PDF, flag `--scenario`).
+- Aucune bloquante à ce stade — le périmètre a été confirmé via `/interview-me` (aperçu fidèle par LibreOffice avec process persistant, comparaison à N groupes dynamiques, React/Vite, usage strictement local, templates non uploadables). Le détail de l'étape "Vérifier les données" (aucun champ éditable, affichage en lecture seule) est une décision d'architecture prise faute de maquette pour cet écran précis — à confirmer avec l'utilisateur si un besoin d'édition apparaît en cours de route.
