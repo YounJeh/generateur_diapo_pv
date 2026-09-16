@@ -3,8 +3,7 @@ import { buildSlide2ReplacementsStorage } from "../../src/pptx/slide2MapStorage.
 import { getEntryText, openPptx } from "../../src/pptx/zip.js";
 import type { StorageSlideValues } from "../../src/types.js";
 
-const FIXTURE_PPTX =
-  "test/data/scenario 1 avec stockage Projet_Ombriere_Rixhiem.pptx";
+const FIXTURE_PPTX = "assets/templates/template-avec-stockage.pptx";
 
 const values: StorageSlideValues = {
   nombreModules: 744,
@@ -25,8 +24,8 @@ const values: StorageSlideValues = {
   depuisStockagePct: 14,
   puissanceInstallee: 350,
   rangees: 3,
-  tauxAutoconsommationAffichage: "+95",
-  tauxAutoproductionStockage: 52,
+  tauxAutoconsommationAffichage: "+90",
+  tauxAutoproductionStockage: 55,
 };
 
 describe("buildSlide2ReplacementsStorage", () => {
@@ -48,35 +47,35 @@ describe("buildSlide2ReplacementsStorage", () => {
 
   it("reproduces the template default when the fixture values are already at the cap", () => {
     const replacements = buildSlide2ReplacementsStorage(values);
-    expect(replacements.get("Taux d’autoconsommation : +95%")).toBe(
-      "Taux d’autoconsommation : +95%",
+    expect(replacements.get("Taux d’autoconsommation : +90%")).toBe(
+      "Taux d’autoconsommation : +90%",
     );
     expect(
       replacements.get(
-        "+95 % de la production de votre centrale photovoltaïque",
+        "+90 % de la production de votre centrale photovoltaïque",
       ),
-    ).toBe("+95 % de la production de votre centrale photovoltaïque");
-    expect(replacements.get("Taux d’autoproduction : 52%")).toBe(
-      "Taux d’autoproduction : 52%",
+    ).toBe("+90 % de la production de votre centrale photovoltaïque");
+    expect(replacements.get("Taux d’autoproduction : 55%")).toBe(
+      "Taux d’autoproduction : 55%",
     );
-    expect(replacements.get("52 % de vos besoins en électricité")).toBe(
-      "52 % de vos besoins en électricité",
+    expect(replacements.get("55 % de vos besoins en électricité")).toBe(
+      "55 % de vos besoins en électricité",
     );
   });
 
   it("does not add a '+' when the autoconsommation is below the cap", () => {
     const belowCap = { ...values, tauxAutoconsommationAffichage: "80" };
     const replacements = buildSlide2ReplacementsStorage(belowCap);
-    expect(replacements.get("Taux d’autoconsommation : +95%")).toBe(
+    expect(replacements.get("Taux d’autoconsommation : +90%")).toBe(
       "Taux d’autoconsommation : 80%",
     );
   });
 
   it("produces the expected replacement text for each field", () => {
     const replacements = buildSlide2ReplacementsStorage(values);
-    expect(replacements.get("744")).toBe("744");
-    expect(replacements.get("347 760 kWh")).toBe("343 740 kWh");
-    expect(replacements.get("77,0 %")).toBe("76 %");
+    expect(replacements.get("200")).toBe("744");
+    expect(replacements.get("150 000 kWh")).toBe("343 740 kWh");
+    expect(replacements.get("80,0 %")).toBe("76 %");
   });
 
   it("does not mention surplus at all", () => {

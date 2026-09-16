@@ -3,8 +3,7 @@ import { buildSlide1Replacements } from "../../src/pptx/slide1Map.js";
 import { getEntryText, openPptx } from "../../src/pptx/zip.js";
 import type { SlideValues } from "../../src/types.js";
 
-const FIXTURE_PPTX =
-  "test/data/Scenario 1 sans stockage Projet_Ombriere_Rixhiem.pptx";
+const FIXTURE_PPTX = "assets/templates/template-sans-stockage.pptx";
 
 const values: SlideValues = {
   nombreModules: 750,
@@ -36,19 +35,19 @@ describe("buildSlide1Replacements", () => {
 
   it("produces the expected replacement text", () => {
     const replacements = buildSlide1Replacements(values);
-    expect(replacements.get("350 kWc")).toBe("353 kWc");
-    expect(replacements.get("3 rangées")).toBe("3 rangées");
-    expect(replacements.get("3 rangées d’ombrières photovoltaïques")).toBe(
+    expect(replacements.get("100 kWc")).toBe("353 kWc");
+    expect(replacements.get("2 rangées")).toBe("3 rangées");
+    expect(replacements.get("2 rangées d’ombrières photovoltaïques")).toBe(
       "3 rangées d’ombrières photovoltaïques",
     );
-    expect(replacements.get("SCENARIO 1 : Ombrières de 350kWc")).toBe(
+    expect(replacements.get("SCENARIO 1 : Ombrières de 100kWc")).toBe(
       "SCENARIO 1 : Ombrières de 353kWc",
     );
   });
 
   it("renumbers the SCENARIO label when scenarioNumero is given", () => {
     const replacements = buildSlide1Replacements(values, 2);
-    expect(replacements.get("SCENARIO 1 : Ombrières de 350kWc")).toBe(
+    expect(replacements.get("SCENARIO 1 : Ombrières de 100kWc")).toBe(
       "SCENARIO 2 : Ombrières de 353kWc",
     );
   });

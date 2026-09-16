@@ -9,8 +9,7 @@ import {
   writePptx,
 } from "../../src/pptx/zip.js";
 
-const FIXTURE_PPTX =
-  "test/data/Scenario 1 sans stockage Projet_Ombriere_Rixhiem.pptx";
+const FIXTURE_PPTX = "assets/templates/template-sans-stockage.pptx";
 const OUTPUT_DIR = "test/output";
 
 function hash(buffer: Buffer): string {
@@ -46,7 +45,7 @@ describe("pptx zip utility", () => {
     const zip = openPptx(FIXTURE_PPTX);
 
     const slide1 = getEntryText(zip, "ppt/slides/slide1.xml");
-    setEntryText(zip, "ppt/slides/slide1.xml", slide1.replace("3 rangées", "5 rangées"));
+    setEntryText(zip, "ppt/slides/slide1.xml", slide1.replace("2 rangées", "5 rangées"));
     writePptx(zip, outputPath);
 
     const output = openPptx(outputPath);

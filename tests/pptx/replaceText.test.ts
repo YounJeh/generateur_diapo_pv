@@ -5,8 +5,7 @@ import { buildSlide2Replacements } from "../../src/pptx/slide2Map.js";
 import { getEntryText, openPptx } from "../../src/pptx/zip.js";
 import type { SlideValues } from "../../src/types.js";
 
-const FIXTURE_PPTX =
-  "test/data/Scenario 1 sans stockage Projet_Ombriere_Rixhiem.pptx";
+const FIXTURE_PPTX = "assets/templates/template-sans-stockage.pptx";
 
 const values: SlideValues = {
   nombreModules: 750,
@@ -35,8 +34,8 @@ describe("replaceRuns", () => {
       "<a:t>3 rangées d’ombrières photovoltaïques</a:t>",
     );
     expect(newXml).toContain("<a:t>3 rangées</a:t>");
-    expect(newXml).not.toContain("<a:t>350 kWc</a:t>");
-    expect(newXml).not.toContain("<a:t>SCENARIO 1 : Ombrières de 350kWc</a:t>");
+    expect(newXml).not.toContain("<a:t>100 kWc</a:t>");
+    expect(newXml).not.toContain("<a:t>SCENARIO 1 : Ombrières de 100kWc</a:t>");
   });
 
   it("replaces every mapped run in the real slide2.xml and leaves '52%' untouched", () => {
@@ -50,7 +49,7 @@ describe("replaceRuns", () => {
     expect(newXml).toContain("<a:t>750</a:t>");
     expect(newXml).toContain("<a:t>350 730 kWh</a:t>");
     expect(newXml).toContain("<a:t>77 %</a:t>");
-    expect(newXml).toContain("<a:t>52%</a:t>"); // hors périmètre, inchangé
+    expect(newXml).toContain("<a:t>65%</a:t>"); // hors périmètre, inchangé
   });
 
   it("throws a clear error listing missing keys, without applying anything", () => {

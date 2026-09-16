@@ -11,7 +11,7 @@ import {
   writePptx,
 } from "../../src/pptx/zip.js";
 
-const FIXTURE_PPTX = "test/data/scenario 1 avec stockage Projet_Ombriere_Rixhiem.pptx";
+const FIXTURE_PPTX = "assets/templates/template-avec-stockage.pptx";
 const OUTPUT_DIR = "test/output";
 // Dérivés des constantes de la fixture (slideWidth=12192000, marginX (x
 // d'origine)=168275, topBoundary (y d'origine)=1740280, FOOTER_TOP=6419850) :

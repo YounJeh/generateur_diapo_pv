@@ -3,10 +3,8 @@ import { describe, expect, it } from "vitest";
 import { appendSlides } from "../../src/pptx/mergeSlides.js";
 import { getEntryBuffer, getEntryText, openPptx, writePptx } from "../../src/pptx/zip.js";
 
-const SANS_STOCKAGE_FIXTURE =
-  "test/data/Scenario 1 sans stockage Projet_Ombriere_Rixhiem.pptx";
-const AVEC_STOCKAGE_FIXTURE =
-  "test/data/scenario 1 avec stockage Projet_Ombriere_Rixhiem.pptx";
+const SANS_STOCKAGE_FIXTURE = "assets/templates/template-sans-stockage.pptx";
+const AVEC_STOCKAGE_FIXTURE = "assets/templates/template-avec-stockage.pptx";
 const OUTPUT_DIR = "test/output";
 
 describe("appendSlides", () => {
