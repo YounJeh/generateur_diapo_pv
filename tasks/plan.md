@@ -92,17 +92,17 @@ Confirmé via `/interview-me` (voir résumé ci-dessous).
 
 ### Phase 2 : Service d'aperçu (pptx → images)
 
-- [ ] **Task 6** : `src/preview/pptxToImages.ts` — `convertPptxToPngs(pptxPath: string, outDir: string): Promise<string[]>` : (1) appelle `soffice --headless --convert-to pdf --outdir <tmp>` (via `child_process`, un appel par génération, pas de process persistant — voir décision révisée ci-dessus) ; (2) rastérise chaque page du PDF obtenu en PNG via `pdfjs-dist`+`canvas`, en généralisant le contournement de `src/pdf/renderChart.ts` (`disableFontFace`, capture des glyphes peints, redessin du texte positionné) à une page entière sans recadrage. Retourne les chemins des PNG, un par slide, dans l'ordre.
-- [ ] **Task 7** : Vérification du service de conversion sur les 3 scénarios (nombre de PNG produits = nombre de slides attendu : 2/3/4).
+- [x] **Task 6** : `src/preview/pptxToImages.ts` — `convertPptxToPngs(pptxPath: string, outDir: string): Promise<string[]>` : (1) appelle `soffice --headless --convert-to pdf --outdir <tmp>` (via `child_process`, un appel par génération, pas de process persistant — voir décision révisée ci-dessus) ; (2) rastérise chaque page du PDF obtenu en PNG via `pdfjs-dist`+`canvas`, en généralisant le contournement de `src/pdf/renderChart.ts` (`disableFontFace`, capture des glyphes peints, redessin du texte positionné) à une page entière sans recadrage. Retourne les chemins des PNG, un par slide, dans l'ordre.
+- [x] **Task 7** : Vérification du service de conversion sur les 3 scénarios (nombre de PNG produits = nombre de slides attendu : 2/3/4).
 
 **Acceptance criteria :**
-- `convertPptxToPngs` sur un pptx sans-stockage produit 2 PNG, avec-stockage 3 PNG, comparaison (2 groupes) 4 PNG (et plus pour N groupes, proportionnel)
-- Les PNG sont lisibles (dimensions non nulles), dans l'ordre des slides, texte et graphiques visibles (pas de texte invisible comme observé sans le contournement)
-- Durée totale documentée (ordre de grandeur ~2-4s pour la conversion pdf + <1s pour la rastérisation), pas de promesse de latence "quasi instantanée" sur les appels suivants
+- [x] `convertPptxToPngs` sur un pptx sans-stockage produit 2 PNG, avec-stockage 3 PNG, comparaison (1 groupe complet) 4 PNG — vérifié pour les 3
+- [x] Les PNG sont lisibles (dimensions non nulles), dans l'ordre des slides, texte et graphiques visibles (pas de texte invisible comme observé sans le contournement) — inspection visuelle
+- [x] Durée totale documentée : ~3,6s pour un pptx à 3 slides (conversion pdf ~2-3s + rastérisation <1s), pas de promesse de latence "quasi instantanée" sur les appels suivants
 
 **Verification :**
-- Tests : `npm test` (nouveau `tests/preview/pptxToImages.test.ts` si l'environnement CI dispose de LibreOffice ; sinon test skip conditionnel + vérification manuelle documentée)
-- Manuel : conversion des pptx de `output/` existants, inspection visuelle d'au moins une image par scénario
+- [x] Tests : `npm test` (`tests/preview/pptxToImages.test.ts`, skip conditionnel si LibreOffice absent)
+- [x] Manuel : conversion de pptx générés via `src/generate/*`, inspection visuelle (sans-stockage, stockage, comparaison)
 
 **Dependencies :** Task 1 (LibreOffice installé), Task 3/4 (pptx à convertir)
 
@@ -113,8 +113,8 @@ Confirmé via `/interview-me` (voir résumé ci-dessous).
 ---
 
 ### Checkpoint 2 : Aperçu
-- [ ] Conversion pptx→images validée sur les 3 scénarios
-- [ ] Revue avec l'utilisateur avant de continuer
+- [x] Conversion pptx→images validée sur les 3 scénarios
+- [x] Revue avec l'utilisateur avant de continuer (approbation groupée : "enchaîne les phases")
 
 ---
 

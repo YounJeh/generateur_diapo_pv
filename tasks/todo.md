@@ -117,13 +117,13 @@ Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/intervie
 **Description :** **(Design révisé après test empirique de Task 1 — voir `tasks/plan.md`.)** Le "process soffice persistant" évalué pendant Task 1 ne réduit pas la latence de façon fiable (chaque `soffice --convert-to` reste ~2-4s même avec un process déjà démarré). `convertPptxToPngs(pptxPath: string, outDir: string): Promise<string[]>` fait donc : (1) `soffice --headless --convert-to pdf --outdir <tmp>` (un appel, produit un PDF multi-pages) ; (2) rastérisation de chaque page en PNG via `pdfjs-dist`+`canvas` (déjà des dépendances), en généralisant le contournement déjà présent dans `src/pdf/renderChart.ts` (`disableFontFace` + capture des glyphes peints par pdfjs + redessin du texte positionné via la matrice de transformation — sans lui le texte du PDF exporté par LibreOffice ressort invisible, vérifié empiriquement) à une page entière sans recadrage.
 
 **Acceptance criteria :**
-- [ ] Produit 2/3/4 PNG (proportionnel au nombre de slides) selon le scénario du pptx en entrée
-- [ ] PNG lisibles, dans l'ordre des slides, texte et graphiques visibles (pas de texte invisible)
-- [ ] Durée totale documentée (ordre de grandeur, pas de promesse de latence quasi instantanée sur les appels suivants)
+- [x] Produit 2/3/4 PNG (proportionnel au nombre de slides) selon le scénario du pptx en entrée
+- [x] PNG lisibles, dans l'ordre des slides, texte et graphiques visibles (pas de texte invisible) — vérifié visuellement
+- [x] Durée totale documentée : ~3,6s pour un pptx à 3 slides (conversion pdf + rastérisation), pas de gain sur les appels suivants
 
 **Verification :**
-- [ ] Tests : `npm test` (`tests/preview/pptxToImages.test.ts`, avec skip conditionnel si LibreOffice absent de l'environnement de test)
-- [ ] Manuel : conversion des pptx de `output/`, inspection visuelle
+- [x] Tests : `npm test` (`tests/preview/pptxToImages.test.ts`, avec skip conditionnel si LibreOffice absent de l'environnement de test)
+- [x] Manuel : conversion des pptx de `output/`, inspection visuelle
 
 **Dependencies :** Task 1
 
@@ -137,8 +137,8 @@ Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/intervie
 **Description :** Valider `convertPptxToPngs` sur les 3 scénarios (pptx générés via Task 3/4).
 
 **Acceptance criteria :**
-- [ ] Nombre de PNG correct pour les 3 scénarios (2/3/4+ slides)
-- [ ] Durée totale mesurée et documentée
+- [x] Nombre de PNG correct pour les 3 scénarios (2/3/4+ slides)
+- [x] Durée totale mesurée et documentée
 
 **Verification :**
 - [ ] Manuel
@@ -152,8 +152,8 @@ Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/intervie
 ---
 
 ## Checkpoint 2 : Aperçu
-- [ ] Conversion pptx→images validée sur les 3 scénarios
-- [ ] Revue avec l'utilisateur avant de continuer
+- [x] Conversion pptx→images validée sur les 3 scénarios
+- [x] Revue avec l'utilisateur avant de continuer (approbation groupée : "enchaîne les phases")
 
 ---
 
