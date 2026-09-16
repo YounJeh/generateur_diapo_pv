@@ -7,6 +7,7 @@ import {
 } from "canvas";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import type { PDFPageProxy } from "pdfjs-dist";
+import { CHART_FONT_FAMILY, ensureChartFontsRegistered } from "../chart/fonts.js";
 import type { Bounds } from "./monthlyEnergyChartBounds.js";
 
 // Node n'a pas de DOMMatrix global ; pdfjs en a besoin pour peindre les
@@ -20,7 +21,6 @@ globalWithDOMMatrix.DOMMatrix ??= DOMMatrix;
 
 const RENDER_SCALE = 3;
 const TEXT_COLOR_FALLBACK = "#3c3c3c";
-const TEXT_FONT_FAMILY = "sans-serif";
 // Tolérance (en pixels device, à RENDER_SCALE) pour rattacher un glyphe
 // peint par pdfjs à l'item de texte correspondant — voir captureGlyphPaints.
 const GLYPH_MATCH_Y_TOLERANCE = 5;
@@ -190,7 +190,7 @@ async function drawTextItems(
     context.save();
     context.resetTransform();
     context.transform(tx[0], tx[1], tx[2], tx[3], tx[4], tx[5]);
-    context.font = `1px ${TEXT_FONT_FAMILY}`;
+    context.font = `1px ${CHART_FONT_FAMILY}`;
     context.fillStyle =
       findItemColor(glyphPaints, tx[4], tx[5], itemWidth) ??
       TEXT_COLOR_FALLBACK;
@@ -209,6 +209,7 @@ export async function renderChartImage(
   pageNumber: number,
   bounds: Bounds,
 ): Promise<Buffer> {
+  ensureChartFontsRegistered();
   const data = new Uint8Array(await readFile(pdfPath));
   const doc = await pdfjsLib.getDocument({
     data,

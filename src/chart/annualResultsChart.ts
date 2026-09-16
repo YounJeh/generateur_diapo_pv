@@ -1,4 +1,5 @@
 import { createCanvas } from "canvas";
+import { CHART_FONT_FAMILY, ensureChartFontsRegistered } from "./fonts.js";
 import type { ExtractedValues, StorageExtractedValues } from "../types.js";
 
 /**
@@ -222,6 +223,7 @@ function roundedRect(
  * `renderAnnualResultsChartStorage` (3 segments).
  */
 function drawChart(rows: [Row, Row], frameRatio: number): Buffer {
+  ensureChartFontsRegistered();
   const height = heightForRatio(frameRatio);
   const canvas = createCanvas(WIDTH, height);
   const ctx = canvas.getContext("2d");
@@ -230,7 +232,7 @@ function drawChart(rows: [Row, Row], frameRatio: number): Buffer {
   ctx.fillRect(0, 0, WIDTH, height);
 
   ctx.fillStyle = INK_MUTED;
-  ctx.font = "700 22px sans-serif";
+  ctx.font = `700 22px ${CHART_FONT_FAMILY}`;
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
   ctx.fillText("RÉSULTATS DE CONSOMMATION ET DE PRODUCTION ANNUELLES", 64, 58);
@@ -251,16 +253,16 @@ function drawChart(rows: [Row, Row], frameRatio: number): Buffer {
     const barW = barMaxW * (row.total / maxTotal);
 
     ctx.fillStyle = INK_SECONDARY;
-    ctx.font = "400 20px sans-serif";
+    ctx.font = `400 20px ${CHART_FONT_FAMILY}`;
     ctx.textAlign = "left";
     ctx.fillText(row.label, marginX, y - 40);
 
     ctx.fillStyle = INK;
-    ctx.font = "700 44px sans-serif";
+    ctx.font = `700 44px ${CHART_FONT_FAMILY}`;
     ctx.fillText(formatFr(row.total), marginX, y + 8);
     const totalW = ctx.measureText(formatFr(row.total)).width;
     ctx.fillStyle = INK_MUTED;
-    ctx.font = "400 17px sans-serif";
+    ctx.font = `400 17px ${CHART_FONT_FAMILY}`;
     ctx.fillText("MWh", marginX + totalW + 8, y + 8);
 
     let cx = barX;
@@ -271,7 +273,7 @@ function drawChart(rows: [Row, Row], frameRatio: number): Buffer {
 
       if (segW > 60) {
         ctx.fillStyle = "#ffffff";
-        ctx.font = "600 14px sans-serif";
+        ctx.font = `600 14px ${CHART_FONT_FAMILY}`;
         ctx.textAlign = "left";
         ctx.fillText(`${seg.pct}%`, cx + 10, y + 5);
       }
@@ -286,7 +288,7 @@ function drawChart(rows: [Row, Row], frameRatio: number): Buffer {
       ctx.fill();
 
       ctx.fillStyle = INK_SECONDARY;
-      ctx.font = "400 16px sans-serif";
+      ctx.font = `400 16px ${CHART_FONT_FAMILY}`;
       ctx.textAlign = "left";
       ctx.fillText(
         `${seg.label} — ${formatFr(seg.value)} MWh (${Math.round(seg.pct)}%)`,
@@ -297,7 +299,7 @@ function drawChart(rows: [Row, Row], frameRatio: number): Buffer {
   });
 
   ctx.fillStyle = INK_MUTED;
-  ctx.font = "italic 15px sans-serif";
+  ctx.font = `italic 15px ${CHART_FONT_FAMILY}`;
   ctx.textAlign = "left";
   ctx.fillText(
     `Longueur des barres proportionnelle au total MWh (Consommation ≈ ${(rows[1].total / rows[0].total).toFixed(1)}× Production).`,
