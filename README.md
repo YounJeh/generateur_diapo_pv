@@ -1,11 +1,10 @@
 # generateur_diapo_pv
 
 Mini-application TypeScript qui extrait des valeurs d'un rapport SolarEdge
-(PDF, pages 1-2) et met à jour un template PPTX de proposition commerciale
-PV avec ces valeurs — texte et graphique de la slide 2 — sans toucher au
-reste de la mise en forme. Deux scénarios sont pris en charge : "sans
-stockage" (2 slides) et "avec stockage" (3 slides, dont une slide 3 non
-traitée par l'outil).
+(PDF) et met à jour un template PPTX de proposition commerciale PV avec ces
+valeurs — texte et graphiques — sans toucher au reste de la mise en forme.
+Deux scénarios sont pris en charge : "sans stockage" (2 slides, pages 1-2 du
+PDF) et "avec stockage" (3 slides, pages 1-3 du PDF).
 
 ## Installation
 
@@ -20,8 +19,9 @@ npm run build
 node dist/cli.js --pdf <chemin du PDF SolarEdge> --rangees <nombre de rangées> [--scenario sans-stockage|stockage] [--output <chemin de sortie>]
 ```
 
-- `--pdf` (obligatoire) : chemin vers le rapport SolarEdge (PDF). Seules les
-  pages 1 et 2 sont lues.
+- `--pdf` (obligatoire) : chemin vers le rapport SolarEdge (PDF). Les pages 1
+  et 2 sont lues dans les deux scénarios ; la page 3 ("Énergie mensuelle
+  estimée") l'est en plus dans le scénario avec stockage.
 - `--rangees` (obligatoire) : nombre de rangées d'ombrières. Cette valeur
   n'apparaît nulle part en texte dans le PDF (probablement un label dans le
   schéma d'implantation, une image) — elle doit être saisie manuellement.
@@ -77,8 +77,12 @@ du PDF) est signalé dans la sortie console.
   - L'image du graphique "Résultats de consommation et de production
     annuelles" est dessinée avec 3 segments par barre (bâtiment/stockage/
     réseau côté production ; PV/stockage/réseau côté consommation).
-- **Slide 3** ("Énergie mensuelle estimée") : **non traitée**, laissée
-  strictement identique à l'original.
+- **Slide 3** ("Énergie mensuelle estimée") : l'image du graphique est
+  remplacée par une capture du graphique correspondant sur la page 3 du
+  PDF (recadrage précis par repérage du titre et de la légende, texte
+  redessiné par-dessus), plutôt qu'une reconstruction à partir de valeurs
+  extraites comme pour la slide 2. La taille du cadre-image est ajustée au
+  ratio réel de cette capture ; sa position ne change pas.
 
 ## Développement
 
