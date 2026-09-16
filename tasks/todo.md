@@ -113,32 +113,32 @@ Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/intervie
 
 ## Phase 2 : Service d'aperçu (pptx → images)
 
-### Task 6 : `src/preview/sofficeConverter.ts`
-**Description :** Démarrer un process `soffice --headless` persistant au premier besoin (profil utilisateur isolé dans un dossier temporaire dédié). Exposer `convertPptxToPngs(pptxPath: string, outDir: string): Promise<string[]>` (une image PNG par slide, ordre garanti), réutilisant le process déjà démarré pour les appels suivants. Arrêt propre à la fermeture du serveur.
+### Task 6 : `src/preview/pptxToImages.ts`
+**Description :** **(Design révisé après test empirique de Task 1 — voir `tasks/plan.md`.)** Le "process soffice persistant" évalué pendant Task 1 ne réduit pas la latence de façon fiable (chaque `soffice --convert-to` reste ~2-4s même avec un process déjà démarré). `convertPptxToPngs(pptxPath: string, outDir: string): Promise<string[]>` fait donc : (1) `soffice --headless --convert-to pdf --outdir <tmp>` (un appel, produit un PDF multi-pages) ; (2) rastérisation de chaque page en PNG via `pdfjs-dist`+`canvas` (déjà des dépendances), en généralisant le contournement déjà présent dans `src/pdf/renderChart.ts` (`disableFontFace` + capture des glyphes peints par pdfjs + redessin du texte positionné via la matrice de transformation — sans lui le texte du PDF exporté par LibreOffice ressort invisible, vérifié empiriquement) à une page entière sans recadrage.
 
 **Acceptance criteria :**
 - [ ] Produit 2/3/4 PNG (proportionnel au nombre de slides) selon le scénario du pptx en entrée
-- [ ] PNG lisibles, dans l'ordre des slides
-- [ ] 2ᵉ appel nettement plus rapide que le 1er (mesuré, ordre de grandeur documenté)
+- [ ] PNG lisibles, dans l'ordre des slides, texte et graphiques visibles (pas de texte invisible)
+- [ ] Durée totale documentée (ordre de grandeur, pas de promesse de latence quasi instantanée sur les appels suivants)
 
 **Verification :**
-- [ ] Tests : `npm test` (`tests/preview/sofficeConverter.test.ts`, avec skip conditionnel si LibreOffice absent de l'environnement de test)
-- [ ] Manuel : conversion des pptx de `output/`
+- [ ] Tests : `npm test` (`tests/preview/pptxToImages.test.ts`, avec skip conditionnel si LibreOffice absent de l'environnement de test)
+- [ ] Manuel : conversion des pptx de `output/`, inspection visuelle
 
 **Dependencies :** Task 1
 
-**Files likely touched :** `src/preview/sofficeConverter.ts`, `tests/preview/sofficeConverter.test.ts`
+**Files likely touched :** `src/preview/pptxToImages.ts`, `tests/preview/pptxToImages.test.ts`
 
 **Estimated scope :** M
 
 ---
 
 ### Task 7 : Vérification du service de conversion
-**Description :** Valider `convertPptxToPngs` sur les 3 scénarios (pptx générés via Task 3/4) et documenter le gain de latence 1er appel vs appels suivants.
+**Description :** Valider `convertPptxToPngs` sur les 3 scénarios (pptx générés via Task 3/4).
 
 **Acceptance criteria :**
 - [ ] Nombre de PNG correct pour les 3 scénarios (2/3/4+ slides)
-- [ ] Gain de latence mesuré et documenté
+- [ ] Durée totale mesurée et documentée
 
 **Verification :**
 - [ ] Manuel

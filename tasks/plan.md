@@ -31,7 +31,8 @@ Confirmé via `/interview-me` (voir résumé ci-dessous).
 - **Backend HTTP dans `src/server/`** (même arborescence `src/`, même pipeline de build `tsc`), pas un projet séparé — reste un simple ajout au package Node existant. Nouveau script `dev:server` (`tsx src/server/index.ts`).
 - **Frontend dans `web/`** (répertoire séparé à la racine), projet Vite+React+TS indépendant avec son propre `package.json` — séparation standard entre un package Node/CLI et une app web, évite de mélanger les dépendances navigateur (React, Vite) dans le `package.json` du CLI.
 - **Sessions de fichiers temporaires** : `POST /api/extract` sauvegarde les PDF uploadés dans `runtime/uploads/<sessionId>/` (dossier gitignored) et retourne les valeurs calculées + `sessionId`. `POST /api/generate/:sessionId` réutilise ces fichiers pour éviter un second upload. Un nettoyage simple (best-effort, au démarrage du serveur + TTL) évite l'accumulation.
-- **Conversion pptx → images** : un process `soffice --headless` démarré une fois (profil utilisateur isolé via `-env:UserInstallation=file://<tmp>`), les appels `soffice --convert-to png --outdir <dir> <pptx>` suivants réutilisent cette instance déjà chargée (comportement natif de LibreOffice quand un process headless tourne déjà avec le même profil) — pas de dépendance npm supplémentaire, juste `child_process`.
+- **Conversion pptx → images (révisé après test empirique, voir Task 1)** : `soffice --convert-to png` n'exporte que la première slide d'un pptx multi-slides — inutilisable tel quel. Un process `soffice --headless` persistant avec profil partagé a été testé pour accélérer les conversions successives : **ça ne fonctionne pas** de façon fiable en invoquant `soffice --convert-to` en CLI à chaque fois (chaque appel reste ~2-4s, qu'un process tourne déjà ou non ; une vraie réutilisation demanderait un client UNO dédié type `unoconv`, jugé disproportionné ici). Design retenu : `soffice --headless --convert-to pdf --outdir <dir> <pptx>` (un seul appel par génération, ~2-4s, produit un PDF multi-pages) puis rastérisation page par page **en Node**, via `pdfjs-dist`+`canvas` (déjà des dépendances du projet) — réutilise le contournement déjà existant dans `src/pdf/renderChart.ts` pour le bug de rendu de texte à police intégrée sous Node (`disableFontFace` + capture des glyphes peints par pdfjs + redessin du texte positionné via la matrice de transformation), généralisé à une page entière (pas de recadrage). Validé empiriquement sur un pptx réel (7 slides, texte et image lisibles, ~300ms pour rastériser toutes les pages une fois le PDF obtenu). Pas de process persistant, pas de dépendance npm supplémentaire.
+- **Budget de latence par génération, révisé** : ~2-4s pour `soffice --convert-to pdf` + ~300ms-1s pour la rastérisation de toutes les pages, à chaque génération (pas de gain sur les générations suivantes). Acceptable pour un usage local où l'action "Générer" est déclenchée une fois par présentation — la promesse initiale de conversions suivantes "quasi instantanées" (~200-500ms) ne tient pas et est abandonnée.
 - **Pas de champ éditable dans l'étape "Vérifier les données"** : les valeurs affichées sont en lecture seule (aucune valeur du mock fourni par l'utilisateur ne suggérait de champ éditable à cette étape, hormis les rangées déjà saisies en étape 1). Si le besoin apparaît plus tard, ce sera une itération séparée.
 - **`npm run dev` unique** à la racine (nouvelle dépendance `concurrently`) lance serveur Express (`tsx --watch`) + Vite dev server (proxy `/api` vers `http://localhost:3001`), pour un flux de développement fluide en une commande.
 
@@ -91,21 +92,21 @@ Confirmé via `/interview-me` (voir résumé ci-dessous).
 
 ### Phase 2 : Service d'aperçu (pptx → images)
 
-- [ ] **Task 6** : `src/preview/sofficeConverter.ts` — démarre un process `soffice --headless` persistant au premier besoin (profil utilisateur isolé dans un dossier temporaire dédié, pour ne pas interférer avec une éventuelle install LibreOffice "normale" de la machine), expose `convertPptxToPngs(pptxPath: string, outDir: string): Promise<string[]>` (une image PNG par slide, ordre garanti). Arrêt propre du process à la fermeture du serveur (`process.on("exit"/"SIGINT"...)`).
-- [ ] **Task 7** : Vérification du service de conversion sur les 3 scénarios (nombre de PNG produits = nombre de slides attendu : 2/3/4), mesure du gain de latence 1er appel vs appels suivants.
+- [ ] **Task 6** : `src/preview/pptxToImages.ts` — `convertPptxToPngs(pptxPath: string, outDir: string): Promise<string[]>` : (1) appelle `soffice --headless --convert-to pdf --outdir <tmp>` (via `child_process`, un appel par génération, pas de process persistant — voir décision révisée ci-dessus) ; (2) rastérise chaque page du PDF obtenu en PNG via `pdfjs-dist`+`canvas`, en généralisant le contournement de `src/pdf/renderChart.ts` (`disableFontFace`, capture des glyphes peints, redessin du texte positionné) à une page entière sans recadrage. Retourne les chemins des PNG, un par slide, dans l'ordre.
+- [ ] **Task 7** : Vérification du service de conversion sur les 3 scénarios (nombre de PNG produits = nombre de slides attendu : 2/3/4).
 
 **Acceptance criteria :**
 - `convertPptxToPngs` sur un pptx sans-stockage produit 2 PNG, avec-stockage 3 PNG, comparaison (2 groupes) 4 PNG (et plus pour N groupes, proportionnel)
-- Les PNG sont lisibles (dimensions non nulles) et dans l'ordre des slides
-- Un 2ᵉ appel (process déjà démarré) est nettement plus rapide que le 1er (mesuré manuellement, ordre de grandeur documenté dans le code ou la PR)
+- Les PNG sont lisibles (dimensions non nulles), dans l'ordre des slides, texte et graphiques visibles (pas de texte invisible comme observé sans le contournement)
+- Durée totale documentée (ordre de grandeur ~2-4s pour la conversion pdf + <1s pour la rastérisation), pas de promesse de latence "quasi instantanée" sur les appels suivants
 
 **Verification :**
-- Tests : `npm test` (nouveau `tests/preview/sofficeConverter.test.ts` si l'environnement CI dispose de LibreOffice ; sinon test skip conditionnel + vérification manuelle documentée)
-- Manuel : conversion des pptx de `output/` existants
+- Tests : `npm test` (nouveau `tests/preview/pptxToImages.test.ts` si l'environnement CI dispose de LibreOffice ; sinon test skip conditionnel + vérification manuelle documentée)
+- Manuel : conversion des pptx de `output/` existants, inspection visuelle d'au moins une image par scénario
 
 **Dependencies :** Task 1 (LibreOffice installé), Task 3/4 (pptx à convertir)
 
-**Files likely touched :** `src/preview/sofficeConverter.ts`, `tests/preview/sofficeConverter.test.ts`
+**Files likely touched :** `src/preview/pptxToImages.ts`, `tests/preview/pptxToImages.test.ts`
 
 **Estimated scope :** M
 
