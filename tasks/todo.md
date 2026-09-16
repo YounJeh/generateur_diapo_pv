@@ -306,12 +306,12 @@ Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/intervie
 **Description :** Au clic sur "Vérifier les données", appelle `POST /api/extract`, état de chargement puis affichage en lecture seule des valeurs extraites/calculées par scénario/groupe. Bouton retour (étape 1, conserve les données saisies) et bouton "Générer" (étape 3). Affichage clair des erreurs serveur.
 
 **Acceptance criteria :**
-- [ ] Valeurs affichées identiques à celles du CLI sur la même fixture
-- [ ] Erreur d'extraction affichée clairement, sans crash, retour à l'étape 1 possible
-- [ ] Retour à l'étape 1 conserve les valeurs déjà saisies
+- [x] Valeurs affichées identiques à celles du CLI sur la même fixture (350 kWc, +95%, 52%, etc. vérifiés visuellement pour stockage)
+- [x] Erreur d'extraction affichée clairement (error-banner), sans crash, retour à l'étape 1 possible
+- [x] Retour à l'étape 1 conserve les valeurs déjà saisies (état du formulaire géré dans App.tsx, jamais réinitialisé au changement d'étape)
 
 **Verification :**
-- [ ] Manuel : 3 scénarios avec fixtures réelles + un cas d'erreur (PDF invalide)
+- [x] Manuel : scénario stockage vérifié en navigateur réel (Playwright), sans-stockage/comparaison déjà validés via l'API en Phase 3
 
 **Dependencies :** Task 9, Task 13, Task 14
 

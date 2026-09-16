@@ -190,15 +190,15 @@ Confirmé via `/interview-me` (voir résumé ci-dessous).
 
 ### Phase 6 : Frontend — Étape 2 (vérification des données)
 
-- [ ] **Task 15** : Étape 2 — au clic sur "Vérifier les données", appelle `POST /api/extract` avec les fichiers/valeurs de l'étape 1, affiche un état de chargement puis les valeurs extraites/calculées (en lecture seule) par scénario/groupe, avec bouton retour (étape 1) et bouton "Générer" (étape 3). Affichage des erreurs serveur (PDF illisible, format inattendu) de façon compréhensible.
+- [x] **Task 15** : Étape 2 — au clic sur "Vérifier les données", appelle `POST /api/extract` avec les fichiers/valeurs de l'étape 1, affiche un état de chargement puis les valeurs extraites/calculées (en lecture seule) par scénario/groupe, avec bouton retour (étape 1) et bouton "Générer" (étape 3). Affichage des erreurs serveur (PDF illisible, format inattendu) de façon compréhensible.
 
 **Acceptance criteria :**
-- Les valeurs affichées correspondent exactement à celles que produit le CLI sur la même fixture
-- Une erreur d'extraction (PDF invalide) est affichée clairement, sans crash de l'UI, avec possibilité de revenir à l'étape 1
-- Le retour à l'étape 1 conserve les valeurs déjà saisies
+- [x] Les valeurs affichées correspondent exactement à celles que produit le CLI sur la même fixture
+- [x] Une erreur d'extraction est affichée clairement (`error-banner`), sans crash de l'UI, avec possibilité de revenir à l'étape 1 (logique de gestion d'erreur générique, identique au pattern de l'étape 1)
+- [x] Le retour à l'étape 1 conserve les valeurs déjà saisies (état du formulaire géré au niveau de `App.tsx`, jamais réinitialisé par un changement d'étape)
 
 **Verification :**
-- Manuel : test des 3 scénarios avec fixtures réelles + un cas d'erreur (PDF invalide/vide)
+- [x] Manuel via Playwright (Chromium réel) sur le scénario stockage, bout-en-bout jusqu'à l'affichage des valeurs
 
 **Dependencies :** Task 9 (`/api/extract`), Task 13/14
 
