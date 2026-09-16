@@ -29,38 +29,38 @@ export function buildSlide2Replacements(
 
   return new Map<string, string>([
     [
-      "Étude de production – Ombrières 350 kWc sans stockage ",
+      "Étude de production – Ombrières 100 kWc sans stockage ",
       `Étude de production – Ombrières ${puissanceInstallee} kWc sans stockage `,
     ],
-    ["350 kWc", `${puissanceInstallee} kWc`],
-    ["744", `${nombreModules}`],
-    ["347 760 kWh", `${productionKwh} kWh`],
-    ["77,0 %", `${ratioPerf} %`],
+    ["100 kWc", `${puissanceInstallee} kWc`],
+    ["200", `${nombreModules}`],
+    ["150 000 kWh", `${productionKwh} kWh`],
+    ["80,0 %", `${ratioPerf} %`],
     [
-      "Taux d’autoconsommation : 71 %",
+      "Taux d’autoconsommation : 60 %",
       `Taux d’autoconsommation : ${tauxAutoconsommation} %`,
     ],
     [
-      "71 % de la production de votre centrale photovoltaïque",
+      "60 % de la production de votre centrale photovoltaïque",
       `${tauxAutoconsommation} % de la production de votre centrale photovoltaïque`,
     ],
     [
-      "29 % restants correspondent à un surplus de production",
+      "40 % restants correspondent à un surplus de production",
       `${surplusProduction} % restants correspondent à un surplus de production`,
     ],
     [
-      "Taux d’autoproduction : 38 %",
+      "Taux d’autoproduction : 45 %",
       `Taux d’autoproduction : ${tauxAutoproduction} %`,
     ],
     [
-      "38 % de vos besoins en électricité",
+      "45 % de vos besoins en électricité",
       `${tauxAutoproduction} % de vos besoins en électricité`,
     ],
-    ["29 % de surplus", `${surplusProduction} % de surplus`],
+    ["40 % de surplus", `${surplusProduction} % de surplus`],
   ]);
 }
 
 /** Textes numériques connus du template que cet outil laisse volontairement inchangés. */
 export const SLIDE2_OUT_OF_SCOPE_TEXTS = [
-  "52%", // estimation marketing "avec stockage", pas une valeur extraite du PDF
+  "65%", // estimation marketing "avec stockage", pas une valeur extraite du PDF
 ];

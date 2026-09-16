@@ -26,27 +26,27 @@ export function buildSlide2ReplacementsStorage(
 
   return new Map<string, string>([
     [
-      "Étude de production – Ombrières 350 kWc avec stockage ",
+      "Étude de production – Ombrières 100 kWc avec stockage ",
       `Étude de production – Ombrières ${puissanceInstallee} kWc avec stockage `,
     ],
-    ["350 kWc", `${puissanceInstallee} kWc`],
-    ["744", `${nombreModules}`],
-    ["347 760 kWh", `${productionKwh} kWh`],
-    ["77,0 %", `${ratioPerf} %`],
+    ["100 kWc", `${puissanceInstallee} kWc`],
+    ["200", `${nombreModules}`],
+    ["150 000 kWh", `${productionKwh} kWh`],
+    ["80,0 %", `${ratioPerf} %`],
     [
-      "Taux d’autoconsommation : +95%",
+      "Taux d’autoconsommation : +90%",
       `Taux d’autoconsommation : ${tauxAutoconsommationAffichage}%`,
     ],
     [
-      "+95 % de la production de votre centrale photovoltaïque",
+      "+90 % de la production de votre centrale photovoltaïque",
       `${tauxAutoconsommationAffichage} % de la production de votre centrale photovoltaïque`,
     ],
     [
-      "Taux d’autoproduction : 52%",
+      "Taux d’autoproduction : 55%",
       `Taux d’autoproduction : ${tauxAutoproductionStockage}%`,
     ],
     [
-      "52 % de vos besoins en électricité",
+      "55 % de vos besoins en électricité",
       `${tauxAutoproductionStockage} % de vos besoins en électricité`,
     ],
   ]);

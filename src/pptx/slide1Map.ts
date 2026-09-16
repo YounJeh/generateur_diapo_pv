@@ -18,18 +18,18 @@ export function buildSlide1Replacements(
 
   return new Map<string, string>([
     [
-      "SCENARIO 1 : Ombrières de 350kWc",
+      "SCENARIO 1 : Ombrières de 100kWc",
       `SCENARIO ${scenarioNumero} : Ombrières de ${puissanceInstallee}kWc`,
     ],
     [
-      "Ombrières puissance de 350 kWc",
+      "Ombrières puissance de 100 kWc",
       `Ombrières puissance de ${puissanceInstallee} kWc`,
     ],
-    ["350 kWc", `${puissanceInstallee} kWc`],
+    ["100 kWc", `${puissanceInstallee} kWc`],
     [
-      "3 rangées d’ombrières photovoltaïques",
+      "2 rangées d’ombrières photovoltaïques",
       `${rangees} rangées d’ombrières photovoltaïques`,
     ],
-    ["3 rangées", `${rangees} rangées`],
+    ["2 rangées", `${rangees} rangées`],
   ]);
 }

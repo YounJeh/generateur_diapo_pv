@@ -37,9 +37,8 @@ type TemplateScenario = Extract<Scenario, "sans-stockage" | "stockage">;
 const SCENARIOS: readonly Scenario[] = ["sans-stockage", "stockage", "comparaison"];
 
 const TEMPLATE_PPTX: Record<TemplateScenario, string> = {
-  "sans-stockage":
-    "test/data/Scenario 1 sans stockage Projet_Ombriere_Rixhiem.pptx",
-  stockage: "test/data/scenario 1 avec stockage Projet_Ombriere_Rixhiem.pptx",
+  "sans-stockage": "assets/templates/template-sans-stockage.pptx",
+  stockage: "assets/templates/template-avec-stockage.pptx",
 };
 
 const CHART_IMAGE_ENTRY: Record<TemplateScenario, string> = {
