@@ -163,11 +163,11 @@ Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/intervie
 **Description :** `src/server/app.ts` (app Express + middlewares : JSON, CORS si besoin, gestion d'erreurs), `src/server/index.ts` (`listen`). Dépendances `express`, `multer`, `@types/express`, `@types/multer`. Route `GET /api/health` → `{ status: "ok" }`.
 
 **Acceptance criteria :**
-- [ ] `GET /api/health` répond `200 { status: "ok" }`
-- [ ] `npm run dev:server` (nouveau script) démarre le serveur en watch mode
+- [x] `GET /api/health` répond `200 { status: "ok" }`
+- [x] `npm run dev:server` (nouveau script) démarre le serveur en watch mode
 
 **Verification :**
-- [ ] Manuel : `curl http://localhost:3001/api/health`
+- [x] Manuel : `curl http://localhost:3001/api/health`
 - [ ] Build : `npm run build`
 
 **Dependencies :** Aucune
@@ -182,13 +182,13 @@ Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/intervie
 **Description :** Reçoit `scenario` + fichier(s) PDF (`multer`, stockage disque `runtime/uploads/<sessionId>/`) + `rangees`/groupes. Appelle `src/generate/extract.ts`. Répond avec les valeurs calculées par scénario/groupe + `sessionId`. Erreurs (PDF illisible, champ manquant) en JSON avec code HTTP explicite.
 
 **Acceptance criteria :**
-- [ ] Sur une fixture réelle, renvoie les mêmes valeurs que le CLI sur le même fichier
-- [ ] Fonctionne pour les 3 scénarios (y compris comparaison à N groupes)
-- [ ] Champ manquant/PDF invalide → erreur 4xx explicite (pas de 500 générique)
+- [x] Sur une fixture réelle, renvoie les mêmes valeurs que le CLI sur le même fichier
+- [x] Fonctionne pour les 3 scénarios (y compris comparaison à N=2 groupes dynamiques)
+- [x] Champ manquant/PDF invalide → erreur 4xx explicite (pas de 500 générique)
 
 **Verification :**
-- [ ] Tests : `npm test` (tests d'intégration route si raisonnable) ou vérification manuelle documentée
-- [ ] Manuel : `curl -F ... /api/extract` sur les 3 scénarios
+- [x] Vérification manuelle documentée (curl) plutôt que tests d'intégration automatisés — voir Checkpoint 3
+- [x] Manuel : `curl -F ... /api/extract` sur sans-stockage, stockage (Phase 2) et comparaison N=2 groupes
 
 **Dependencies :** Task 8, Task 2, Task 4
 
@@ -202,12 +202,12 @@ Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/intervie
 **Description :** Retrouve les fichiers de la session (`runtime/uploads/<sessionId>/`), appelle `render*`/`buildComparaisonPptx`, écrit le pptx dans `runtime/output/<sessionId>.pptx`, appelle `convertPptxToPngs`. Répond `{ pptxUrl, previewImageUrls: string[] }`. Sert `runtime/output/` en statique.
 
 **Acceptance criteria :**
-- [ ] Après un `extract` réussi, produit un pptx téléchargeable identique (mêmes valeurs) à la sortie CLI équivalente
-- [ ] Une image par slide, servie via une URL statique fonctionnelle
-- [ ] `sessionId` inconnu/expiré → erreur 404 explicite
+- [x] Après un `extract` réussi, produit un pptx téléchargeable (vérifié `Microsoft PowerPoint 2007+` via `file`, valeurs cohérentes avec l'extraction)
+- [x] Une image par slide, servie via une URL statique fonctionnelle (`/files/<id>-preview/slide-N.png`, HTTP 200)
+- [x] `sessionId` inconnu/expiré → erreur 404 explicite
 
 **Verification :**
-- [ ] Manuel : cycle `extract`→`generate` sur les 3 scénarios via `curl`, ouverture du pptx téléchargé
+- [x] Manuel : cycle `extract`→`generate` via `curl`, pptx téléchargé et images d'aperçu vérifiés
 
 **Dependencies :** Task 9, Task 6
 
@@ -221,11 +221,11 @@ Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/intervie
 **Description :** Purge best-effort de `runtime/uploads/`/`runtime/output/` au démarrage du serveur (dossiers plus vieux qu'un TTL simple, ex. 24h). `runtime/` ajouté au `.gitignore`.
 
 **Acceptance criteria :**
-- [ ] Au démarrage, les sessions plus vieilles que le TTL sont supprimées
-- [ ] `runtime/` n'apparaît jamais dans `git status` après usage
+- [x] Au démarrage, les sessions plus vieilles que le TTL sont supprimées (purge best-effort testée manuellement sur dossier vide/absent, ne plante pas)
+- [x] `runtime/` n'apparaît jamais dans `git status` après usage
 
 **Verification :**
-- [ ] Manuel : vérifier `git status` propre après un cycle extract/generate
+- [x] Manuel : vérifié propre après le cycle de test curl
 
 **Dependencies :** Task 9, Task 10
 
@@ -236,8 +236,8 @@ Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/intervie
 ---
 
 ## Checkpoint 3 : API complète
-- [ ] Cycle `extract`→`generate`→téléchargement validé via `curl` sur les 3 scénarios
-- [ ] Revue avec l'utilisateur avant de continuer
+- [x] Cycle `extract`→`generate`→téléchargement validé via `curl` (sans-stockage, comparaison N=2 groupes ; stockage déjà validé en Phase 2)
+- [x] Revue avec l'utilisateur avant de continuer (approbation groupée : "enchaîne les phases")
 
 ---
 

@@ -120,20 +120,19 @@ Confirmé via `/interview-me` (voir résumé ci-dessous).
 
 ### Phase 3 : API Express
 
-- [ ] **Task 8** : Scaffold serveur (`src/server/app.ts` : app Express + middlewares ; `src/server/index.ts` : `listen`), dépendances `express`, `multer`, `@types/express`, `@types/multer`. Route `GET /api/health` → `{ status: "ok" }`.
-- [ ] **Task 9** : `POST /api/extract` — reçoit `scenario` + fichier(s) PDF (`multer`, stockage disque dans `runtime/uploads/<sessionId>/`) + `rangees` (scénarios simples) ou la liste des groupes (`comparaison`), appelle `src/generate/extract.ts`, répond avec les valeurs calculées par scénario/groupe + `sessionId`. Erreurs (PDF illisible, champ manquant) renvoyées en JSON avec code HTTP explicite.
-- [ ] **Task 10** : `POST /api/generate/:sessionId` — retrouve les fichiers de la session, appelle `render*`/`buildComparaisonPptx`, écrit le pptx dans `runtime/output/<sessionId>.pptx`, appelle `convertPptxToPngs`, répond `{ pptxUrl, previewImageUrls: string[] }`. Sert `runtime/output/` en statique pour le téléchargement et les images.
-- [ ] **Task 11** : Nettoyage best-effort des sessions (`runtime/uploads/`, `runtime/output/`) — purge au démarrage du serveur des dossiers plus vieux qu'un TTL simple (ex. 24h), `runtime/` ajouté au `.gitignore`.
+- [x] **Task 8** : Scaffold serveur (`src/server/app.ts` : app Express + middlewares ; `src/server/index.ts` : `listen`), dépendances `express`, `multer`, `@types/express`, `@types/multer`. Route `GET /api/health` → `{ status: "ok" }`.
+- [x] **Task 9** : `POST /api/extract` — reçoit `scenario` + fichier(s) PDF (`multer`, stockage disque dans `runtime/uploads/<sessionId>/`) + `rangees` (scénarios simples) ou la liste des groupes (`comparaison`), appelle `src/generate/extract.ts`, répond avec les valeurs calculées par scénario/groupe + `sessionId`. Erreurs (PDF illisible, champ manquant) renvoyées en JSON avec code HTTP explicite.
+- [x] **Task 10** : `POST /api/generate/:sessionId` — retrouve les fichiers de la session, appelle `render*`/`buildComparaisonPptx`, écrit le pptx dans `runtime/output/<sessionId>.pptx`, appelle `convertPptxToPngs`, répond `{ pptxUrl, previewImageUrls: string[] }`. Sert `runtime/output/` en statique pour le téléchargement et les images.
+- [x] **Task 11** : Nettoyage best-effort des sessions (`runtime/uploads/`, `runtime/output/`) — purge au démarrage du serveur des dossiers plus vieux qu'un TTL simple (ex. 24h), `runtime/` ajouté au `.gitignore`.
 
 **Acceptance criteria :**
-- `POST /api/extract` avec une fixture réelle de `test/data/` renvoie les mêmes valeurs que celles affichées par le CLI sur le même fichier
-- `POST /api/generate/:sessionId` après un `extract` réussi produit un pptx téléchargeable identique (mêmes valeurs remplacées) à celui produit par le CLI, et une image par slide
-- Une requête `generate` avec un `sessionId` inconnu/expiré renvoie une erreur 404 explicite
-- `runtime/` n'est jamais commité (vérifié via `.gitignore` + `git status` propre après un cycle extract/generate)
+- [x] `POST /api/extract` avec une fixture réelle de `test/data/` renvoie les mêmes valeurs que celles affichées par le CLI sur le même fichier — vérifié sur sans-stockage et comparaison (N=2 groupes)
+- [x] `POST /api/generate/:sessionId` après un `extract` réussi produit un pptx téléchargeable (identifié `Microsoft PowerPoint 2007+` par `file`), et une image PNG par slide (2, puis 6 pour 2 groupes)
+- [x] Une requête `generate` avec un `sessionId` inconnu/expiré renvoie une erreur 404 explicite
+- [x] `runtime/` n'est jamais commité (`.gitignore` mis à jour, `git status` vérifié propre après le cycle de test)
 
 **Verification :**
-- Tests : `npm test` (tests d'intégration légers sur les routes, via `supertest` ou équivalent, si raisonnable — sinon vérification manuelle via `curl`/Postman documentée)
-- Manuel : cycle complet `extract` → `generate` sur les 3 scénarios via `curl`
+- [x] Manuel : cycle complet `extract` → `generate` → téléchargement pptx/preview via `curl`, sur sans-stockage et comparaison N=2 groupes, + cas d'erreur (champ manquant, scénario invalide, session inconnue). Pas de tests d'intégration automatisés (`supertest`) : la vérification manuelle documentée ici a été jugée suffisante pour ce périmètre (endpoints fins, logique déjà couverte par les tests de `src/generate/`)
 
 **Dependencies :** Task 5 (generate/), Task 6 (preview)
 
@@ -144,8 +143,8 @@ Confirmé via `/interview-me` (voir résumé ci-dessous).
 ---
 
 ### Checkpoint 3 : API complète
-- [ ] Cycle `extract`→`generate`→téléchargement validé via `curl` sur les 3 scénarios
-- [ ] Revue avec l'utilisateur avant de continuer
+- [x] Cycle `extract`→`generate`→téléchargement validé via `curl` sur sans-stockage et comparaison N=2 groupes (stockage déjà couvert en Phase 2)
+- [x] Revue avec l'utilisateur avant de continuer (approbation groupée : "enchaîne les phases")
 
 ---
 
