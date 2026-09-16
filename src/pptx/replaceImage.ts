@@ -7,9 +7,25 @@ const SRC_RECT_PATTERN = /<a:srcRect\b[^/]*\/>/;
 
 const SLIDE3_IMAGE_ENTRY = "ppt/media/image11.png";
 const SLIDE3_ENTRY = "ppt/slides/slide3.xml";
+const PRESENTATION_ENTRY = "ppt/presentation.xml";
 const PIC_BLOCK_PATTERN = /<p:pic>[\s\S]*?<\/p:pic>/;
+const OFF_PATTERN = /<a:off\b[^/]*\/>/;
 const EXT_PATTERN = /<a:ext\b[^/]*\/>/;
+const SLD_SZ_PATTERN = /<p:sldSz\b[^/]*\/>/;
+const X_PATTERN = /x="(\d+)"/;
+const Y_PATTERN = /y="(\d+)"/;
 const CX_PATTERN = /cx="(\d+)"/;
+const CY_PATTERN = /cy="(\d+)"/;
+
+function requireAttr(tag: string, pattern: RegExp, label: string, source: string): number {
+  const value = tag.match(pattern)?.[1];
+  if (value === undefined) {
+    throw new Error(
+      `Attribut ${label} introuvable dans ${tag} (${source} a peut-être changé).`,
+    );
+  }
+  return Number.parseInt(value, 10);
+}
 
 /**
  * Remplace l'image du graphique (slide 2) par `newImageBuffer` et remet
@@ -46,12 +62,17 @@ export function replaceChartImage(
 /**
  * Remplace l'image du graphique mensuel (slide 3, scénario avec stockage)
  * par `newImageBuffer` et ajuste `<a:ext>` (taille du cadre) au ratio
- * largeur/hauteur réel de la nouvelle image, la largeur du cadre d'origine
- * (`cx`) étant conservée à l'identique. Contrairement à `replaceChartImage`,
- * la nouvelle image ici ne vise pas le ratio du cadre existant (elle suit
- * le contenu naturel du graphique capturé depuis le PDF) : c'est le cadre
- * qui s'adapte à elle, pas l'inverse. La position (`<a:off>`) n'est pas
- * touchée.
+ * largeur/hauteur réel de la nouvelle image. Contrairement à
+ * `replaceChartImage`, la nouvelle image ici ne vise pas le ratio du cadre
+ * existant (elle suit le contenu naturel du graphique capturé depuis le
+ * PDF) : c'est le cadre qui s'adapte à elle, pas l'inverse.
+ *
+ * La taille est calculée en "contain" dans l'espace disponible entre le
+ * coin haut-gauche du cadre d'origine (`<a:off>`, inchangé) et les bords
+ * droit/bas de la diapositive (`<p:sldSz>`) — le cadre d'origine occupait
+ * déjà exactement cet espace (x + cx = largeur diapo). Sans ce calcul, une
+ * image dont le ratio naturel est plus "haut" que celui du cadre d'origine
+ * déborderait sous la diapositive (rognée par PowerPoint, pas par nous).
  */
 export async function replaceMonthlyChartImage(
   zip: Pptx,
@@ -66,16 +87,32 @@ export async function replaceMonthlyChartImage(
       `<p:pic> introuvable dans ${SLIDE3_ENTRY} (le template a peut-être changé).`,
     );
   }
+  const off = picBlock.match(OFF_PATTERN)?.[0];
   const ext = picBlock.match(EXT_PATTERN)?.[0];
-  const cx = ext ? Number.parseInt(ext.match(CX_PATTERN)?.[1] ?? "", 10) : NaN;
-  if (!ext || Number.isNaN(cx)) {
+  if (!off || !ext) {
     throw new Error(
-      `<a:ext> introuvable ou invalide dans le <p:pic> de ${SLIDE3_ENTRY} (le template a peut-être changé).`,
+      `<a:off>/<a:ext> introuvable(s) dans le <p:pic> de ${SLIDE3_ENTRY} (le template a peut-être changé).`,
     );
   }
+  const x = requireAttr(off, X_PATTERN, "x", SLIDE3_ENTRY);
+  const y = requireAttr(off, Y_PATTERN, "y", SLIDE3_ENTRY);
+
+  const sldSz = getEntryText(zip, PRESENTATION_ENTRY).match(SLD_SZ_PATTERN)?.[0];
+  if (!sldSz) {
+    throw new Error(
+      `<p:sldSz> introuvable dans ${PRESENTATION_ENTRY} (le template a peut-être changé).`,
+    );
+  }
+  const slideWidth = requireAttr(sldSz, CX_PATTERN, "cx", PRESENTATION_ENTRY);
+  const slideHeight = requireAttr(sldSz, CY_PATTERN, "cy", PRESENTATION_ENTRY);
+
+  const maxCx = slideWidth - x;
+  const maxCy = slideHeight - y;
 
   const image = await loadImage(newImageBuffer);
-  const cy = Math.round((cx * image.height) / image.width);
+  const scale = Math.min(maxCx / image.width, maxCy / image.height);
+  const cx = Math.round(image.width * scale);
+  const cy = Math.round(image.height * scale);
 
   const newPicBlock = picBlock.replace(ext, `<a:ext cx="${cx}" cy="${cy}"/>`);
   setEntryText(zip, SLIDE3_ENTRY, xml.replace(picBlock, newPicBlock));
