@@ -45,6 +45,22 @@ export function setEntryBuffer(
   zip.updateFile(entryPath, content);
 }
 
+export function addEntryText(
+  zip: Pptx,
+  entryPath: string,
+  content: string,
+): void {
+  zip.addFile(entryPath, Buffer.from(content, "utf-8"));
+}
+
+export function addEntryBuffer(
+  zip: Pptx,
+  entryPath: string,
+  content: Buffer,
+): void {
+  zip.addFile(entryPath, content);
+}
+
 export function writePptx(zip: Pptx, outputPath: string): void {
   zip.writeZip(outputPath);
 }

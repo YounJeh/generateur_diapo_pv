@@ -3,8 +3,9 @@
 Mini-application TypeScript qui extrait des valeurs d'un rapport SolarEdge
 (PDF) et met à jour un template PPTX de proposition commerciale PV avec ces
 valeurs — texte et graphiques — sans toucher au reste de la mise en forme.
-Deux scénarios sont pris en charge : "sans stockage" (2 slides, pages 1-2 du
-PDF) et "avec stockage" (3 slides, pages 1-3 du PDF).
+Trois scénarios sont pris en charge : "sans stockage" (2 slides, pages 1-2 du
+PDF), "avec stockage" (3 slides, pages 1-3 du PDF), et "comparaison" (4
+slides, combine les deux à partir d'une paire de PDF).
 
 ## Installation
 
@@ -25,11 +26,24 @@ node dist/cli.js --pdf <chemin du PDF SolarEdge> --rangees <nombre de rangées> 
 - `--rangees` (obligatoire) : nombre de rangées d'ombrières. Cette valeur
   n'apparaît nulle part en texte dans le PDF (probablement un label dans le
   schéma d'implantation, une image) — elle doit être saisie manuellement.
-- `--scenario` (optionnel, défaut `sans-stockage`) : `sans-stockage` ou
-  `stockage`. Sélectionne le template pptx et les règles d'extraction/calcul
-  correspondantes.
+- `--scenario` (optionnel, défaut `sans-stockage`) : `sans-stockage`,
+  `stockage` ou `comparaison`. Sélectionne le template pptx et les règles
+  d'extraction/calcul correspondantes.
 - `--output` (optionnel) : chemin du pptx généré. Par défaut :
-  `output/<nom-du-pdf>.pptx`.
+  `output/<nom-du-pdf>.pptx` (`output/<nom-du-pdf-sans-stockage>_comparaison.pptx`
+  pour le scénario `comparaison`).
+
+Le scénario `comparaison` prend en entrée deux PDF au lieu d'un : un même
+dimensionnement (mêmes ombrières/puissance), testé avec et sans stockage. Il
+utilise `--pdf-sans-stockage` et `--pdf-avec-stockage` à la place de `--pdf` :
+
+```bash
+node dist/cli.js \
+  --scenario comparaison \
+  --pdf-sans-stockage "test/data/Solar_Edge_ITM_Rixhiem_3_omb_V2.pdf" \
+  --pdf-avec-stockage "test/data/D_26_1223_Intermarche_Rixhiem_3_Omb_avec_stockage_V2.pdf" \
+  --rangees 3
+```
 
 Exemple, scénario sans stockage (fixtures du dépôt) :
 
@@ -83,6 +97,19 @@ du PDF) est signalé dans la sortie console.
   redessiné par-dessus), plutôt qu'une reconstruction à partir de valeurs
   extraites comme pour la slide 2. La taille du cadre-image est ajustée au
   ratio réel de cette capture ; sa position ne change pas.
+
+### Scénario comparaison
+
+Combine les deux pipelines ci-dessus en un seul pptx de 4 slides : les 2
+slides du scénario sans stockage, suivies des 2 dernières slides
+(résultats + énergie mensuelle) du scénario avec stockage. La slide 1 du
+scénario avec stockage n'est pas reprise, car elle serait identique à celle
+du scénario sans stockage pour un même dimensionnement.
+
+Si le nombre de modules ou la puissance installée extraits diffèrent entre
+les deux PDF, un avertissement (non bloquant) est affiché : ces valeurs ne
+dépendent que de l'implantation physique, pas du stockage, donc une
+divergence suggère que les deux PDF ne décrivent pas le même dimensionnement.
 
 ## Développement
 
