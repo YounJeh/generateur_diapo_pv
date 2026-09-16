@@ -54,8 +54,11 @@ export function SlideLightbox({ imageUrls, startIndex, onClose }: Props) {
   function handleWheel(event: WheelEvent<HTMLImageElement>) {
     event.preventDefault();
     setScale((current) => {
-      const next = current - event.deltaY * ZOOM_STEP;
-      return Math.min(MAX_SCALE, Math.max(MIN_SCALE, next));
+      const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, current - event.deltaY * ZOOM_STEP));
+      if (next === MIN_SCALE) {
+        setOffset({ x: 0, y: 0 });
+      }
+      return next;
     });
   }
 
@@ -81,7 +84,13 @@ export function SlideLightbox({ imageUrls, startIndex, onClose }: Props) {
 
   return (
     <div className="lightbox-backdrop" onClick={onClose}>
-      <div className="lightbox-content" onClick={(event) => event.stopPropagation()}>
+      <div
+        className="lightbox-content"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Diapositive ${currentIndex + 1} sur ${imageUrls.length}, agrandie`}
+        onClick={(event) => event.stopPropagation()}
+      >
         <button
           type="button"
           className="lightbox-close"

@@ -585,6 +585,15 @@ button {
   margin-top: 4px;
 }
 
+.preview-thumb {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: zoom-in;
+}
+
 .preview-grid img {
   cursor: zoom-in;
 }
@@ -633,15 +642,17 @@ button {
 
 .lightbox-close {
   position: absolute;
-  top: -44px;
-  right: 0;
-  background: transparent;
+  top: 8px;
+  right: 8px;
+  background: rgba(14, 42, 61, 0.6);
   border: none;
+  border-radius: 50%;
   color: var(--cream);
-  font-size: 22px;
+  font-size: 18px;
+  width: 32px;
+  height: 32px;
   cursor: pointer;
   line-height: 1;
-  padding: 8px;
 }
 
 .lightbox-nav {
