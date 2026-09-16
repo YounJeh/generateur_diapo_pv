@@ -6,9 +6,12 @@ import {
   renderAnnualResultsChart,
   renderAnnualResultsChartStorage,
 } from "./chart/annualResultsChart.js";
+import { openPdfPage } from "./pdf/document.js";
 import { extractFromPdfText, extractFromPdfTextStorage } from "./pdf/extractValues.js";
+import { findMonthlyEnergyChartBounds } from "./pdf/monthlyEnergyChartBounds.js";
 import { getPageTexts } from "./pdf/reader.js";
-import { replaceChartImage } from "./pptx/replaceImage.js";
+import { renderChartImage } from "./pdf/renderChart.js";
+import { replaceChartImage, replaceMonthlyChartImage } from "./pptx/replaceImage.js";
 import { replaceRuns } from "./pptx/replaceText.js";
 import { buildSlide1Replacements } from "./pptx/slide1Map.js";
 import {
@@ -39,6 +42,8 @@ const CHART_IMAGE_ENTRY: Record<Scenario, string> = {
   "sans-stockage": "ppt/media/image8.png",
   stockage: "ppt/media/image5.png",
 };
+
+const MONTHLY_CHART_PAGE_NUMBER = 3;
 
 interface CliArgs {
   pdf: string;
@@ -155,6 +160,7 @@ async function runSansStockage(
 
 async function runStockage(
   zip: Pptx,
+  pdf: string,
   page1Text: string,
   page2Text: string,
   rangees: number,
@@ -183,11 +189,20 @@ async function runStockage(
   console.log(
     `\nRemplacements de texte appliqués : ${slide1Applied + slide2Applied.length} (slide 1 : ${slide1Applied}, slide 2 : ${slide2Applied.length})`,
   );
-  console.log("Slide 3 (énergie mensuelle estimée) non traitée, laissée inchangée.");
 
   const chartImage = renderAnnualResultsChartStorage(values);
   replaceChartImage(zip, chartImage, CHART_IMAGE_ENTRY.stockage);
   console.log("Image du graphique (slide 2) remplacée.");
+
+  const monthlyChartPage = await openPdfPage(pdf, MONTHLY_CHART_PAGE_NUMBER);
+  const monthlyChartBounds = await findMonthlyEnergyChartBounds(monthlyChartPage);
+  const monthlyChartImage = await renderChartImage(
+    pdf,
+    MONTHLY_CHART_PAGE_NUMBER,
+    monthlyChartBounds,
+  );
+  await replaceMonthlyChartImage(zip, monthlyChartImage);
+  console.log("Image du graphique (slide 3) remplacée.");
 }
 
 async function run(argv: string[]): Promise<void> {
@@ -199,7 +214,7 @@ async function run(argv: string[]): Promise<void> {
   if (scenario === "sans-stockage") {
     await runSansStockage(zip, page1Text, page2Text, rangees);
   } else {
-    await runStockage(zip, page1Text, page2Text, rangees);
+    await runStockage(zip, pdf, page1Text, page2Text, rangees);
   }
 
   await mkdir(path.dirname(output), { recursive: true });
