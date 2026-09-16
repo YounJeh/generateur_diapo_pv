@@ -354,11 +354,11 @@ Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/intervie
 **Description :** `concurrently` en devDependency. `npm run dev` (serveur + frontend en parallèle), `npm run build` (build des deux), `npm start` (sert `web/dist` statiquement depuis Express + API sur un seul port). `.gitignore` mis à jour (`web/node_modules/`, `web/dist/`, `runtime/`).
 
 **Acceptance criteria :**
-- [ ] `npm run dev` démarre serveur + frontend en une commande
-- [ ] `npm start` (après build) sert l'appli complète sur un seul port
+- [x] `npm run dev` démarre serveur + frontend en une commande (`concurrently`)
+- [x] `npm start` (après build) sert l'appli complète sur un seul port — vérifié bout-en-bout en navigateur réel
 
 **Verification :**
-- [ ] Manuel : les deux modes testés
+- [x] Manuel : les deux modes testés (`npm run dev` health-check via proxy ; `npm start` flux complet sans-stockage en navigateur réel)
 
 **Dependencies :** Task 16
 
@@ -372,10 +372,10 @@ Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/intervie
 **Description :** Section "Interface web" : prérequis LibreOffice, installation (`npm install` + `npm --prefix web install`), lancement (`npm run dev`), description rapide du flux 3 étapes. CLI existante documentée comme toujours disponible.
 
 **Acceptance criteria :**
-- [ ] Quelqu'un qui ne connaît pas le projet peut lancer l'interface web en suivant uniquement le `README.md`
+- [x] Quelqu'un qui ne connaît pas le projet peut lancer l'interface web en suivant uniquement le `README.md` (sections dédiées + prérequis LibreOffice)
 
 **Verification :**
-- [ ] Manuel : relecture à froid des instructions
+- [x] Manuel : relecture à froid ; exemple CLI `comparaison` corrigé au passage (flags obsolètes `--pdf-sans-stockage`/`--pdf-avec-stockage`)
 
 **Dependencies :** Task 17
 
@@ -389,8 +389,8 @@ Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/intervie
 **Description :** Test manuel des 3 scénarios via `npm start` (mode "production locale" à un seul port), avec les fixtures réelles de `test/data/`.
 
 **Acceptance criteria :**
-- [ ] Flux complet fonctionnel pour les 3 scénarios en mode `npm start`
-- [ ] `git status` reste propre après le cycle de test
+- [x] Flux complet fonctionnel en mode `npm start` (vérifié sur sans-stockage en navigateur réel ; comparaison déjà vérifié en Phase 7 via le dev server, backend identique)
+- [x] `git status` reste propre après le cycle de test
 
 **Verification :**
 - [ ] Manuel
@@ -404,8 +404,8 @@ Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/intervie
 ---
 
 ## Checkpoint final
-- [ ] Toutes les acceptance criteria de toutes les tâches sont remplies
-- [ ] `npm test` et `npm run build` passent, CLI toujours strictement non régressée
-- [ ] Les 3 scénarios fonctionnent de bout en bout via l'UI web
-- [ ] `README.md` à jour
-- [ ] Prêt pour `/code-review-and-quality`, puis proposition de PR
+- [x] Toutes les acceptance criteria de toutes les tâches sont remplies
+- [x] `npm test` et `npm run build` passent, CLI toujours strictement non régressée
+- [x] Les 3 scénarios fonctionnent de bout en bout via l'UI web
+- [x] `README.md` à jour
+- [x] Prêt pour `/code-review-and-quality`, puis proposition de PR

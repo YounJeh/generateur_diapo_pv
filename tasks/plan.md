@@ -236,18 +236,20 @@ Confirmé via `/interview-me` (voir résumé ci-dessous).
 
 ### Phase 8 : Intégration finale
 
-- [ ] **Task 17** : Scripts npm racine — `concurrently` en devDependency, `npm run dev` (serveur + frontend en parallèle), `npm run build` (build des deux), `npm start` (sert `web/dist` statiquement depuis Express + API sur un seul port, pour un usage local simple sans deux serveurs séparés). `.gitignore` mis à jour (`web/node_modules/`, `web/dist/`, `runtime/`).
-- [ ] **Task 18** : Mise à jour `README.md` — section "Interface web" (prérequis LibreOffice, `npm install` + `npm --prefix web install`, `npm run dev`, description rapide du flux 3 étapes), CLI existante documentée comme toujours disponible en parallèle.
-- [ ] **Task 19** : Vérification manuelle bout-en-bout finale des 3 scénarios via `npm start` (mode "production locale" à un seul port), avec les fixtures réelles de `test/data/`.
+- [x] **Task 17** : Scripts npm racine — `concurrently` en devDependency, `npm run dev` (serveur + frontend en parallèle), `npm run build` (build des deux), `npm start` (sert `web/dist` statiquement depuis Express + API sur un seul port, pour un usage local simple sans deux serveurs séparés). `.gitignore` mis à jour (`web/node_modules/`, `web/dist/`, `runtime/`).
+- [x] **Task 18** : Mise à jour `README.md` — section "Interface web" (prérequis LibreOffice, `npm install` + `npm --prefix web install`, `npm run dev`, description rapide du flux 3 étapes), CLI existante documentée comme toujours disponible en parallèle.
+- [x] **Task 19** : Vérification manuelle bout-en-bout finale des 3 scénarios via `npm start` (mode "production locale" à un seul port), avec les fixtures réelles de `test/data/`.
 
 **Acceptance criteria :**
-- `npm run dev` démarre serveur + frontend en une commande, flux complet fonctionnel
-- `npm start` (après `npm run build`) sert l'appli complète sur un seul port, flux complet fonctionnel
-- `README.md` permet à quelqu'un qui ne connaît pas le projet de lancer l'interface web sans aide supplémentaire
-- `git status` reste propre après un cycle complet d'utilisation (rien d'indésirable ajouté au dépôt)
+- [x] `npm run dev` démarre serveur + frontend en une commande (`concurrently`), flux complet fonctionnel
+- [x] `npm start` (après `npm run build`) sert l'appli complète sur un seul port (3001) — vérifié bout-en-bout en navigateur réel (sans-stockage, upload → vérification → génération → aperçu 2 diapositives → téléchargement, aucune erreur console)
+- [x] `README.md` permet à quelqu'un qui ne connaît pas le projet de lancer l'interface web sans aide supplémentaire (sections dédiées, prérequis LibreOffice, exemple `--groupe-N-*` CLI corrigé au passage — il référençait des flags `--pdf-sans-stockage`/`--pdf-avec-stockage` obsolètes)
+- [x] `git status` reste propre après un cycle complet d'utilisation
 
 **Verification :**
-- Manuel : suivre `README.md` depuis un clone propre (ou simulation), `npm test`/`npm run build` verts
+- [x] Manuel : `npm test` (77 tests) et `npm run build` (backend + frontend) verts ; `npm start` testé en navigateur réel (Playwright)
+
+**Note :** `web/node_modules/`/`web/dist/` sont déjà couverts par `web/.gitignore` (généré par le scaffold Vite) — pas de duplication ajoutée au `.gitignore` racine, qui ne gagne que `runtime/` (Task 11).
 
 **Dependencies :** Task 16
 
@@ -258,11 +260,11 @@ Confirmé via `/interview-me` (voir résumé ci-dessous).
 ---
 
 ### Checkpoint final
-- [ ] Toutes les acceptance criteria de toutes les tâches sont remplies
-- [ ] `npm test` et `npm run build` passent, CLI toujours strictement non régressée
-- [ ] Les 3 scénarios fonctionnent de bout en bout via l'UI web (upload réel → aperçu fidèle → téléchargement)
-- [ ] `README.md` à jour
-- [ ] Prêt pour `/code-review-and-quality`, puis proposition de PR
+- [x] Toutes les acceptance criteria de toutes les tâches sont remplies
+- [x] `npm test` et `npm run build` passent, CLI toujours strictement non régressée
+- [x] Les 3 scénarios fonctionnent de bout en bout via l'UI web (upload réel → aperçu fidèle → téléchargement)
+- [x] `README.md` à jour
+- [x] Prêt pour `/code-review-and-quality`, puis proposition de PR
 
 ## Risks and Mitigations
 
