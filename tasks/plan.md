@@ -86,7 +86,7 @@ Confirmé via `/interview-me` (voir résumé ci-dessous).
 ### Checkpoint 1 : Backend foundation
 - [x] `npm test` et `npm run build` passent
 - [x] Non-régression CLI vérifiée (pptx identiques byte-à-byte sans-stockage/stockage, contenu identique comparaison ; stdout identique) sur les 3 scénarios, fixtures réelles
-- [ ] Revue avec l'utilisateur avant de continuer
+- [x] Revue avec l'utilisateur avant de continuer
 
 ---
 

@@ -107,7 +107,7 @@ Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/intervie
 ## Checkpoint 1 : Backend foundation
 - [x] `npm test` et `npm run build` passent (22 fichiers, 75 tests)
 - [x] Non-régression CLI vérifiée (pptx identiques/contenu identique + stdout identique, 3 scénarios, fixtures réelles)
-- [ ] Revue avec l'utilisateur avant de continuer
+- [x] Revue avec l'utilisateur avant de continuer
 
 ---
 
