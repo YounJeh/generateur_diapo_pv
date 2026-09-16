@@ -28,7 +28,7 @@ import {
   writePptx,
   type Pptx,
 } from "./pptx/zip.js";
-import type { SlideValues } from "./types.js";
+import type { SlideValues, StorageSlideValues } from "./types.js";
 
 type Scenario = "sans-stockage" | "stockage" | "comparaison";
 /** Scénarios adossés à un unique template pptx (à l'exclusion de "comparaison", qui combine les deux). */
@@ -48,24 +48,35 @@ const CHART_IMAGE_ENTRY: Record<TemplateScenario, string> = {
 };
 
 const MONTHLY_CHART_PAGE_NUMBER = 3;
-/** Numéros des slides du template "avec stockage" reportées dans le pptx de comparaison. */
-const COMPARAISON_APPENDED_SLIDES = [2, 3];
+/** Numéros de slides d'un template, hors slide de titre (slide 1). */
+const CONTENT_SLIDE_NUMBERS: Record<TemplateScenario, readonly number[]> = {
+  "sans-stockage": [2],
+  stockage: [2, 3],
+};
+
+/**
+ * Groupe de dimensionnement pour le scénario "comparaison" : un nombre de
+ * rangées (donc une puissance) donné, avec un cas sans-stockage et/ou un cas
+ * avec-stockage. Deux PDF appartiennent au même groupe s'ils décrivent le
+ * même dimensionnement physique (mêmes ombrières/puissance).
+ */
+interface Groupe {
+  rangees: number;
+  pdfSansStockage?: string;
+  pdfAvecStockage?: string;
+}
 
 type CliArgs =
   | { scenario: TemplateScenario; pdf: string; rangees: number; output: string }
-  | {
-      scenario: "comparaison";
-      pdfSansStockage: string;
-      pdfAvecStockage: string;
-      rangees: number;
-      output: string;
-    };
+  | { scenario: "comparaison"; groupes: Groupe[]; output: string };
 
 function usage(): string {
   return [
     "Usage :",
     "  --pdf <chemin du PDF SolarEdge> --rangees <nombre de rangées> [--scenario sans-stockage|stockage] [--output <chemin du pptx de sortie>]",
-    "  --scenario comparaison --pdf-sans-stockage <chemin> --pdf-avec-stockage <chemin> --rangees <nombre de rangées> [--output <chemin du pptx de sortie>]",
+    "  --scenario comparaison --groupe-1-rangees <nombre> [--groupe-1-pdf-sans-stockage <chemin>] [--groupe-1-pdf-avec-stockage <chemin>] [--groupe-2-rangees ... ] [--output <chemin du pptx de sortie>]",
+    "    Chaque groupe représente un dimensionnement (puissance/rangées) et doit fournir au moins un des deux PDF.",
+    "    Les slides sont assemblées dans l'ordre des groupes ; à l'intérieur d'un groupe, sans-stockage précède avec-stockage.",
   ].join("\n");
 }
 
@@ -94,31 +105,19 @@ function parseArgs(argv: string[]): CliArgs {
 
   const scenario = parseScenario(args.get("scenario"));
 
-  const rangeesRaw = args.get("rangees");
-  if (!rangeesRaw) {
-    throw new Error(
-      `Argument manquant : --rangees (le nombre de rangées n'est pas extractible du PDF, saisie manuelle requise). ${usage()}`,
-    );
-  }
-  const rangees = Number.parseInt(rangeesRaw, 10);
-  if (!Number.isFinite(rangees) || rangees <= 0) {
-    throw new Error(
-      `--rangees doit être un entier positif, reçu : "${rangeesRaw}"`,
-    );
+  if (scenario === "comparaison") {
+    const groupes = parseGroupes(args);
+    // Chaque groupe est validé (dans parseGroupes) pour avoir au moins un PDF.
+    const firstPdf = groupes[0].pdfSansStockage ?? groupes[0].pdfAvecStockage!;
+    const output = args.get("output") ?? defaultOutputPath(firstPdf, "_comparaison");
+    return { scenario, groupes, output };
   }
 
-  if (scenario === "comparaison") {
-    const pdfSansStockage = args.get("pdf-sans-stockage");
-    const pdfAvecStockage = args.get("pdf-avec-stockage");
-    if (!pdfSansStockage || !pdfAvecStockage) {
-      throw new Error(
-        `Arguments manquants : --pdf-sans-stockage et --pdf-avec-stockage sont requis pour --scenario comparaison. ${usage()}`,
-      );
-    }
-    const output =
-      args.get("output") ?? defaultOutputPath(pdfSansStockage, "_comparaison");
-    return { scenario, pdfSansStockage, pdfAvecStockage, rangees, output };
-  }
+  const rangees = parsePositiveInt(
+    args.get("rangees"),
+    "--rangees",
+    "(le nombre de rangées n'est pas extractible du PDF, saisie manuelle requise)",
+  );
 
   const pdf = args.get("pdf");
   if (!pdf) {
@@ -133,12 +132,74 @@ function defaultOutputPath(pdfPath: string, suffix = ""): string {
   return path.join("output", `${base}${suffix}.pptx`);
 }
 
+function parsePositiveInt(raw: string | undefined, flag: string, missingHint = ""): number {
+  if (!raw) {
+    throw new Error(
+      `Argument manquant : ${flag}${missingHint ? ` ${missingHint}` : ""}. ${usage()}`,
+    );
+  }
+  const value = Number.parseInt(raw, 10);
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${flag} doit être un entier positif, reçu : "${raw}"`);
+  }
+  return value;
+}
+
+/**
+ * Extrait les groupes de dimensionnement du scénario "comparaison" à partir
+ * des flags --groupe-N-rangees / --groupe-N-pdf-sans-stockage /
+ * --groupe-N-pdf-avec-stockage. Les indices N doivent être contigus à partir
+ * de 1 (ordre = ordre d'assemblage des slides).
+ */
+function parseGroupes(args: Map<string, string>): Groupe[] {
+  const groupeIndexPattern = /^groupe-(\d+)-(rangees|pdf-sans-stockage|pdf-avec-stockage)$/;
+  const indices = new Set<number>();
+  for (const key of args.keys()) {
+    const match = key.match(groupeIndexPattern);
+    if (match) {
+      indices.add(Number.parseInt(match[1], 10));
+    }
+  }
+
+  if (indices.size === 0) {
+    throw new Error(
+      `Arguments manquants : au moins --groupe-1-rangees et un PDF (--groupe-1-pdf-sans-stockage et/ou --groupe-1-pdf-avec-stockage) sont requis pour --scenario comparaison. ${usage()}`,
+    );
+  }
+
+  const sortedIndices = [...indices].sort((a, b) => a - b);
+  sortedIndices.forEach((index, position) => {
+    const expected = position + 1;
+    if (index !== expected) {
+      throw new Error(
+        `Groupes non contigus : --groupe-${expected}-* est manquant (des flags --groupe-${index}-* existent sans lui). ${usage()}`,
+      );
+    }
+  });
+
+  return sortedIndices.map((n) => {
+    const rangees = parsePositiveInt(args.get(`groupe-${n}-rangees`), `--groupe-${n}-rangees`);
+    const pdfSansStockage = args.get(`groupe-${n}-pdf-sans-stockage`);
+    const pdfAvecStockage = args.get(`groupe-${n}-pdf-avec-stockage`);
+    if (!pdfSansStockage && !pdfAvecStockage) {
+      throw new Error(
+        `Arguments manquants : --groupe-${n}-pdf-sans-stockage et/ou --groupe-${n}-pdf-avec-stockage requis pour le groupe ${n}. ${usage()}`,
+      );
+    }
+    return { rangees, pdfSansStockage, pdfAvecStockage };
+  });
+}
+
 /** Applique les remplacements de slide 1 (identiques pour les deux scénarios) et renvoie le nombre appliqué. */
-function applySlide1Replacements(zip: Pptx, values: SlideValues): number {
+function applySlide1Replacements(
+  zip: Pptx,
+  values: SlideValues,
+  scenarioNumero = 1,
+): number {
   const slide1Xml = getEntryText(zip, "ppt/slides/slide1.xml");
   const { xml: newSlide1Xml, applied } = replaceRuns(
     slide1Xml,
-    buildSlide1Replacements(values),
+    buildSlide1Replacements(values, scenarioNumero),
   );
   setEntryText(zip, "ppt/slides/slide1.xml", newSlide1Xml);
   return applied.length;
@@ -149,7 +210,8 @@ async function runSansStockage(
   page1Text: string,
   page2Text: string,
   rangees: number,
-): Promise<void> {
+  scenarioNumero = 1,
+): Promise<SlideValues> {
   const extracted = extractFromPdfText(page1Text, page2Text);
   const values = buildValues(extracted, rangees);
 
@@ -163,7 +225,7 @@ async function runSansStockage(
   console.log(`  Nombre de rangées (manuel) : ${values.rangees}`);
   console.log(`Puissance installée calculée : ${values.puissanceInstallee} kWc`);
 
-  const slide1Applied = applySlide1Replacements(zip, values);
+  const slide1Applied = applySlide1Replacements(zip, values, scenarioNumero);
 
   const slide2Xml = getEntryText(zip, "ppt/slides/slide2.xml");
   const { xml: newSlide2Xml, applied: slide2Applied } = replaceRuns(
@@ -182,6 +244,8 @@ async function runSansStockage(
   const chartImage = renderAnnualResultsChart(values);
   replaceChartImage(zip, chartImage, CHART_IMAGE_ENTRY["sans-stockage"]);
   console.log("Image du graphique (slide 2) remplacée.");
+
+  return values;
 }
 
 async function runStockage(
@@ -190,7 +254,8 @@ async function runStockage(
   page1Text: string,
   page2Text: string,
   rangees: number,
-): Promise<void> {
+  scenarioNumero = 1,
+): Promise<StorageSlideValues> {
   const extracted = extractFromPdfTextStorage(page1Text, page2Text);
   const values = buildStorageValues(extracted, rangees);
 
@@ -203,7 +268,7 @@ async function runStockage(
   console.log(`  Nombre de rangées (manuel)      : ${values.rangees}`);
   console.log(`Puissance installée calculée      : ${values.puissanceInstallee} kWc`);
 
-  const slide1Applied = applySlide1Replacements(zip, values);
+  const slide1Applied = applySlide1Replacements(zip, values, scenarioNumero);
 
   const slide2Xml = getEntryText(zip, "ppt/slides/slide2.xml");
   const { xml: newSlide2Xml, applied: slide2Applied } = replaceRuns(
@@ -229,61 +294,113 @@ async function runStockage(
   );
   await replaceMonthlyChartImage(zip, monthlyChartImage);
   console.log("Image du graphique (slide 3) remplacée.");
+
+  return values;
+}
+
+interface Cas {
+  scenario: TemplateScenario;
+  pdf: string;
+}
+
+/** Cas d'un groupe, dans l'ordre d'assemblage voulu : sans-stockage avant avec-stockage. */
+function orderedCases(groupe: Groupe): Cas[] {
+  const cases: Cas[] = [];
+  if (groupe.pdfSansStockage) {
+    cases.push({ scenario: "sans-stockage", pdf: groupe.pdfSansStockage });
+  }
+  if (groupe.pdfAvecStockage) {
+    cases.push({ scenario: "stockage", pdf: groupe.pdfAvecStockage });
+  }
+  return cases;
 }
 
 /**
- * Scénario "comparaison" : lance les deux pipelines existants (sans-stockage
- * et avec-stockage) sur leurs PDF respectifs, puis fusionne les résultats en
- * un seul pptx de 4 slides — les 2 slides sans-stockage suivies des 2
- * dernières slides (résultats + énergie mensuelle) du scénario avec-stockage.
- * Suppose que les deux PDF décrivent le même dimensionnement (mêmes
- * ombrières/puissance) ; un avertissement (non bloquant) est émis sinon.
+ * Scénario "comparaison" : assemble N groupes de dimensionnement dans
+ * l'ordre donné. Chaque groupe fournit un cas sans-stockage et/ou un cas
+ * avec-stockage (même dimensionnement, donc même --groupe-N-rangees) ; à
+ * l'intérieur d'un groupe, sans-stockage précède avec-stockage. Le premier
+ * cas de chaque groupe apporte sa slide de titre (renumérotée "SCENARIO N"
+ * selon la position du groupe) ; les cas suivants n'apportent que leurs
+ * slides de contenu. La cohérence de dimensionnement (modules/puissance)
+ * entre les deux cas d'un même groupe est vérifiée (avertissement non
+ * bloquant) ; aucune vérification n'est faite entre groupes, qui décrivent
+ * intentionnellement des dimensionnements différents.
  */
-async function runComparaison(
-  pdfSansStockage: string,
-  pdfAvecStockage: string,
-  rangees: number,
-  output: string,
-): Promise<void> {
-  const [sansPage1Text, sansPage2Text] = await getPageTexts(pdfSansStockage, [1, 2]);
-  const sansValues = buildValues(
-    extractFromPdfText(sansPage1Text, sansPage2Text),
-    rangees,
-  );
+async function runComparaison(groupes: Groupe[], output: string): Promise<void> {
+  let baseZip: Pptx | undefined;
+  let totalSlides = 0;
 
-  const [avecPage1Text, avecPage2Text] = await getPageTexts(pdfAvecStockage, [1, 2]);
-  const avecValues = buildStorageValues(
-    extractFromPdfTextStorage(avecPage1Text, avecPage2Text),
-    rangees,
-  );
+  for (let groupeIndex = 0; groupeIndex < groupes.length; groupeIndex += 1) {
+    const groupe = groupes[groupeIndex];
+    const scenarioNumero = groupeIndex + 1;
+    const cases = orderedCases(groupe);
+    console.log(`\n=== Groupe ${scenarioNumero} (${groupe.rangees} rangées) ===`);
 
-  for (const warning of checkDimensioningConsistency(sansValues, avecValues)) {
-    console.warn(`Avertissement : ${warning}`);
+    let sansValues: SlideValues | undefined;
+    let avecValues: StorageSlideValues | undefined;
+
+    for (let caseIndex = 0; caseIndex < cases.length; caseIndex += 1) {
+      const isGroupeFirstCase = caseIndex === 0;
+      const cas = cases[caseIndex];
+      const [page1Text, page2Text] = await getPageTexts(cas.pdf, [1, 2]);
+      const zip = openPptx(TEMPLATE_PPTX[cas.scenario]);
+
+      if (cas.scenario === "sans-stockage") {
+        sansValues = await runSansStockage(
+          zip,
+          page1Text,
+          page2Text,
+          groupe.rangees,
+          scenarioNumero,
+        );
+      } else {
+        avecValues = await runStockage(
+          zip,
+          cas.pdf,
+          page1Text,
+          page2Text,
+          groupe.rangees,
+          scenarioNumero,
+        );
+      }
+
+      if (!baseZip) {
+        baseZip = zip;
+        totalSlides += CONTENT_SLIDE_NUMBERS[cas.scenario].length + 1;
+        continue;
+      }
+
+      const slideNumbers = isGroupeFirstCase
+        ? [1, ...CONTENT_SLIDE_NUMBERS[cas.scenario]]
+        : CONTENT_SLIDE_NUMBERS[cas.scenario];
+      appendSlides(baseZip, zip, slideNumbers);
+      totalSlides += slideNumbers.length;
+    }
+
+    if (sansValues && avecValues) {
+      for (const warning of checkDimensioningConsistency(sansValues, avecValues)) {
+        console.warn(`Avertissement (groupe ${scenarioNumero}) : ${warning}`);
+      }
+    }
   }
 
-  const sansZip = openPptx(TEMPLATE_PPTX["sans-stockage"]);
-  await runSansStockage(sansZip, sansPage1Text, sansPage2Text, rangees);
-
-  const avecZip = openPptx(TEMPLATE_PPTX.stockage);
-  await runStockage(avecZip, pdfAvecStockage, avecPage1Text, avecPage2Text, rangees);
-
-  appendSlides(sansZip, avecZip, COMPARAISON_APPENDED_SLIDES);
+  if (!baseZip) {
+    throw new Error("Aucun groupe valide fourni pour le scénario comparaison.");
+  }
 
   await mkdir(path.dirname(output), { recursive: true });
-  writePptx(sansZip, output);
-  console.log(`\nFichier généré (comparaison, 4 slides) : ${output}`);
+  writePptx(baseZip, output);
+  console.log(
+    `\nFichier généré (comparaison, ${groupes.length} groupe(s), ${totalSlides} slides) : ${output}`,
+  );
 }
 
 async function run(argv: string[]): Promise<void> {
   const args = parseArgs(argv);
 
   if (args.scenario === "comparaison") {
-    await runComparaison(
-      args.pdfSansStockage,
-      args.pdfAvecStockage,
-      args.rangees,
-      args.output,
-    );
+    await runComparaison(args.groupes, args.output);
     return;
   }
 

@@ -45,4 +45,11 @@ describe("buildSlide1Replacements", () => {
       "SCENARIO 1 : Ombrières de 353kWc",
     );
   });
+
+  it("renumbers the SCENARIO label when scenarioNumero is given", () => {
+    const replacements = buildSlide1Replacements(values, 2);
+    expect(replacements.get("SCENARIO 1 : Ombrières de 350kWc")).toBe(
+      "SCENARIO 2 : Ombrières de 353kWc",
+    );
+  });
 });
