@@ -64,7 +64,7 @@ node dist/cli.js \
 
 ## Ce que l'outil remplace
 
-### Scénario sans stockage (template `Scenario 1 sans stockage Projet_Ombriere_Rixhiem.pptx`)
+### Scénario sans stockage (template `assets/templates/template-sans-stockage.pptx`)
 
 - **Slide 1** : puissance installée (titre + corps), nombre de rangées.
 - **Slide 2** : puissance installée (titre + corps), nombre de modules,
@@ -75,10 +75,10 @@ node dist/cli.js \
 
 Le reste du contenu (mise en forme, polices, autres slides) reste
 strictement identique à l'original. Un chiffre volontairement laissé
-inchangé (l'estimation marketing "52%" sur la slide 2, qui ne provient pas
+inchangé (l'estimation marketing "65%" sur la slide 2, qui ne provient pas
 du PDF) est signalé dans la sortie console.
 
-### Scénario avec stockage (template `scenario 1 avec stockage Projet_Ombriere_Rixhiem.pptx`)
+### Scénario avec stockage (template `assets/templates/template-avec-stockage.pptx`)
 
 - **Slide 1** : traitement identique au scénario sans stockage.
 - **Slide 2** : puissance installée, nombre de modules, production
