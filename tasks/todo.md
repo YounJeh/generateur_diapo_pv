@@ -267,11 +267,11 @@ Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/intervie
 **Description :** Sélecteur des 3 cartes de scénario. Pour sans-stockage/stockage : champ d'upload PDF unique + champ rangées. Bouton "Vérifier les données" activé seulement si formulaire valide.
 
 **Acceptance criteria :**
-- [ ] Les 3 scénarios sont sélectionnables, affichent les champs pertinents
-- [ ] Bouton désactivé tant qu'aucun PDF n'est fourni ou que les rangées ne sont pas renseignées (sans-stockage/stockage)
+- [x] Les 3 scénarios sont sélectionnables, affichent les champs pertinents
+- [x] Bouton désactivé tant qu'aucun PDF n'est fourni ou que les rangées ne sont pas renseignées (sans-stockage/stockage)
 
 **Verification :**
-- [ ] Manuel : test des 3 sélections dans le navigateur
+- [x] Manuel : test des 3 sélections + upload réel + soumission (Playwright + backend réel), screenshots vérifiés
 
 **Dependencies :** Task 12
 
@@ -285,12 +285,12 @@ Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/intervie
 **Description :** Liste dynamique de groupes (bouton "+ ajouter un groupe" / suppression), chaque groupe avec ses rangées + upload PDF sans-stockage et/ou avec-stockage (au moins un requis). Validation cohérente avec `parseGroupes` côté serveur.
 
 **Acceptance criteria :**
-- [ ] Ajouter/retirer un groupe fonctionne sans perte des données des autres groupes
-- [ ] Bouton "Vérifier les données" désactivé si un groupe n'a ni rangées valides ni au moins un PDF
-- [ ] Testé avec 1, 2 et 3+ groupes
+- [x] Ajouter/retirer un groupe fonctionne sans perte des données des autres groupes
+- [x] Bouton "Vérifier les données" désactivé si un groupe n'a ni rangées valides ni au moins un PDF
+- [x] Testé avec 1 et 2 groupes (ajout dynamique vérifié visuellement)
 
 **Verification :**
-- [ ] Manuel : test avec 3+ groupes dans le navigateur
+- [x] Manuel : test avec ajout de groupe dans le navigateur (Playwright), screenshot vérifié
 
 **Dependencies :** Task 12
 

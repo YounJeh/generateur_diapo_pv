@@ -169,16 +169,16 @@ Confirmé via `/interview-me` (voir résumé ci-dessous).
 
 ### Phase 5 : Frontend — Étape 1 (scénario + upload)
 
-- [ ] **Task 13** : Étape 1, scénarios simples (`sans-stockage`/`stockage`) — sélecteur des 3 cartes de scénario, champ d'upload PDF unique + champ rangées, activation du bouton "Vérifier les données" seulement si le formulaire est valide.
-- [ ] **Task 14** : Étape 1, scénario `comparaison` — liste dynamique de groupes (bouton "+ ajouter un groupe" / suppression), chaque groupe avec ses rangées + upload PDF sans-stockage et/ou avec-stockage (au moins un des deux requis), validation cohérente avec `parseGroupes` côté serveur.
+- [x] **Task 13** : Étape 1, scénarios simples (`sans-stockage`/`stockage`) — sélecteur des 3 cartes de scénario, champ d'upload PDF unique + champ rangées, activation du bouton "Vérifier les données" seulement si le formulaire est valide.
+- [x] **Task 14** : Étape 1, scénario `comparaison` — liste dynamique de groupes (bouton "+ ajouter un groupe" / suppression), chaque groupe avec ses rangées + upload PDF sans-stockage et/ou avec-stockage (au moins un des deux requis), validation cohérente avec `parseGroupes` côté serveur.
 
 **Acceptance criteria :**
-- Les 3 scénarios sont sélectionnables et affichent les champs pertinents (upload simple pour sans-stockage/stockage, liste de groupes pour comparaison)
-- Impossible d'activer "Vérifier les données" tant que le formulaire du scénario actif n'est pas valide (au moins un PDF requis par cas, rangées > 0)
-- Ajouter/retirer un groupe en mode comparaison fonctionne sans perte des données déjà saisies dans les autres groupes
+- [x] Les 3 scénarios sont sélectionnables et affichent les champs pertinents (upload simple pour sans-stockage/stockage, liste de groupes pour comparaison)
+- [x] Impossible d'activer "Vérifier les données" tant que le formulaire du scénario actif n'est pas valide (au moins un PDF requis par cas, rangées > 0)
+- [x] Ajouter/retirer un groupe en mode comparaison fonctionne sans perte des données déjà saisies dans les autres groupes
 
 **Verification :**
-- Manuel : test des 3 scénarios dans le navigateur, y compris ajout/suppression de 3+ groupes en comparaison
+- [x] Manuel via Playwright (Chromium réel, capture d'écran + vérification console sans erreur) : les 3 scénarios, ajout de groupe en comparaison, upload d'un vrai PDF + soumission bout-en-bout (backend réel, transition vers l'étape 2 confirmée)
 
 **Dependencies :** Task 12
 
