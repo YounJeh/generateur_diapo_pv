@@ -150,7 +150,7 @@ Confirmé via `/interview-me` (voir résumé ci-dessous).
 
 ### Phase 4 : Frontend — scaffold
 
-- [ ] **Task 12** : Scaffold `web/` (Vite + React + TS), proxy dev `/api` → `http://localhost:3001` (`vite.config.ts`), structure de dossiers (`src/steps/`, `src/components/`, `src/api/client.ts`), layout de base inspiré de la maquette (topbar avec logo/marque, stepper 3 étapes, disposition principale + panneau latéral récapitulatif) — **recréé**, pas copié du HTML fourni. Palette/typographie librement inspirées (pas de contrainte de pixel-perfect).
+- [x] **Task 12** : Scaffold `web/` (Vite + React + TS), proxy dev `/api` → `http://localhost:3001` (`vite.config.ts`), structure de dossiers (`src/steps/`, `src/components/`, `src/api/client.ts`), layout de base inspiré de la maquette (topbar avec logo/marque, stepper 3 étapes, disposition principale + panneau latéral récapitulatif) — **recréé**, pas copié du HTML fourni. Palette/typographie librement inspirées (pas de contrainte de pixel-perfect).
 
 **Acceptance criteria :**
 - `npm --prefix web run dev` démarre un serveur Vite affichant la coquille de l'appli (topbar + stepper + zone de contenu vide/placeholder)
