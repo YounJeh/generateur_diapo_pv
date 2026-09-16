@@ -38,7 +38,7 @@ export function Step3Result({ result, onStartOver }: Props) {
         {openIndex !== null && (
           <SlideLightbox
             imageUrls={result.previewImageUrls}
-            index={openIndex}
+            startIndex={openIndex}
             onClose={() => setOpenIndex(null)}
           />
         )}
