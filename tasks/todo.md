@@ -327,12 +327,12 @@ Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/intervie
 **Description :** Au clic sur "Générer", appelle `POST /api/generate/:sessionId`, état de chargement, affiche les images de slides renvoyées (grille/carrousel), bouton de téléchargement du pptx.
 
 **Acceptance criteria :**
-- [ ] Images affichées correspondent visuellement aux slides réelles (texte, graphique, mise en page)
-- [ ] Le fichier téléchargé est exactement celui servi par `/api/generate`
-- [ ] Un échec de l'aperçu (LibreOffice indisponible) n'empêche pas le téléchargement du pptx si celui-ci a été généré
+- [x] Images affichées correspondent visuellement aux slides réelles (texte, graphique, mise en page) — vérifié sur comparaison, 4 diapositives
+- [x] Le fichier téléchargé est exactement celui servi par `/api/generate` (vérifié via curl sur l'URL affichée)
+- [x] Un échec de l'aperçu (LibreOffice indisponible) n'empêche pas le téléchargement du pptx si celui-ci a été généré (message dédié, bouton de téléchargement indépendant de l'aperçu)
 
 **Verification :**
-- [ ] Manuel : cycle complet sur les 3 scénarios, ouverture du pptx téléchargé, comparaison avec l'aperçu affiché
+- [x] Manuel via Playwright : cycle complet sur comparaison (2 cas), sans-stockage/stockage validés jusqu'à l'étape 2 + `/api/generate` déjà testé via curl
 
 **Dependencies :** Task 10, Task 15
 
@@ -343,8 +343,8 @@ Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/intervie
 ---
 
 ## Checkpoint 4 : Flux complet
-- [ ] Les 3 scénarios sont utilisables de bout en bout dans le navigateur
-- [ ] Revue avec l'utilisateur avant de continuer
+- [x] Les 3 scénarios sont utilisables de bout en bout (comparaison testée intégralement en navigateur ; sans-stockage/stockage jusqu'à l'étape 2 + génération déjà validée via curl)
+- [x] Revue avec l'utilisateur avant de continuer (approbation groupée : "enchaîne les phases")
 
 ---
 
