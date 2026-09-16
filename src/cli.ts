@@ -20,7 +20,10 @@ import {
   SLIDE2_OUT_OF_SCOPE_TEXTS,
   buildSlide2Replacements,
 } from "./pptx/slide2Map.js";
-import { buildSlide2ReplacementsStorage } from "./pptx/slide2MapStorage.js";
+import {
+  buildSlide2ReplacementsStorage,
+  buildSlide3ReplacementsStorage,
+} from "./pptx/slide2MapStorage.js";
 import {
   getEntryText,
   openPptx,
@@ -276,8 +279,15 @@ async function runStockage(
   );
   setEntryText(zip, "ppt/slides/slide2.xml", newSlide2Xml);
 
+  const slide3TitleXml = getEntryText(zip, "ppt/slides/slide3.xml");
+  const { xml: newSlide3TitleXml, applied: slide3Applied } = replaceRuns(
+    slide3TitleXml,
+    buildSlide3ReplacementsStorage(values),
+  );
+  setEntryText(zip, "ppt/slides/slide3.xml", newSlide3TitleXml);
+
   console.log(
-    `\nRemplacements de texte appliqués : ${slide1Applied + slide2Applied.length} (slide 1 : ${slide1Applied}, slide 2 : ${slide2Applied.length})`,
+    `\nRemplacements de texte appliqués : ${slide1Applied + slide2Applied.length + slide3Applied.length} (slide 1 : ${slide1Applied}, slide 2 : ${slide2Applied.length}, slide 3 : ${slide3Applied.length})`,
   );
 
   const chartImage = renderAnnualResultsChartStorage(values);

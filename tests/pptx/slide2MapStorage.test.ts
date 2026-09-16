@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildSlide2ReplacementsStorage } from "../../src/pptx/slide2MapStorage.js";
+import {
+  buildSlide2ReplacementsStorage,
+  buildSlide3ReplacementsStorage,
+} from "../../src/pptx/slide2MapStorage.js";
 import { getEntryText, openPptx } from "../../src/pptx/zip.js";
 import type { StorageSlideValues } from "../../src/types.js";
 
@@ -82,6 +85,28 @@ describe("buildSlide2ReplacementsStorage", () => {
     for (const [oldText, newText] of buildSlide2ReplacementsStorage(values)) {
       expect(oldText.toLowerCase()).not.toContain("surplus");
       expect(newText.toLowerCase()).not.toContain("surplus");
+    }
+  });
+});
+
+describe("buildSlide3ReplacementsStorage", () => {
+  it("has a single mapping : the title repeated from slide2", () => {
+    const replacements = buildSlide3ReplacementsStorage(values);
+    expect(replacements.size).toBe(1);
+    expect(replacements.get("Étude de production – Ombrières 100 kWc avec stockage ")).toBe(
+      "Étude de production – Ombrières 350 kWc avec stockage ",
+    );
+  });
+
+  it("the key exists verbatim in the real slide3.xml", () => {
+    const zip = openPptx(FIXTURE_PPTX);
+    const xml = getEntryText(zip, "ppt/slides/slide3.xml");
+    const replacements = buildSlide3ReplacementsStorage(values);
+
+    for (const oldText of replacements.keys()) {
+      expect(xml, `clé introuvable dans slide3.xml : "${oldText}"`).toContain(
+        `<a:t>${oldText}</a:t>`,
+      );
     }
   });
 });
