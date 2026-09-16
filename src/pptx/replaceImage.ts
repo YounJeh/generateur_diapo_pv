@@ -15,7 +15,11 @@ const SLD_SZ_PATTERN = /<p:sldSz\b[^/]*\/>/;
 const X_PATTERN = /x="(\d+)"/;
 const Y_PATTERN = /y="(\d+)"/;
 const CX_PATTERN = /cx="(\d+)"/;
-const CY_PATTERN = /cy="(\d+)"/;
+// Haut du bandeau de pied de page bleu marine (`002736`), pleine largeur,
+// défini dans le slideMaster (`<a:off y="6419850"/><a:ext cy="438150"/>`,
+// et y + cy = hauteur de la diapo). Le bas de l'image doit s'arrêter juste
+// au-dessus.
+const FOOTER_TOP = 6419850;
 
 function requireAttr(tag: string, pattern: RegExp, label: string, source: string): number {
   const value = tag.match(pattern)?.[1];
@@ -61,18 +65,18 @@ export function replaceChartImage(
 
 /**
  * Remplace l'image du graphique mensuel (slide 3, scénario avec stockage)
- * par `newImageBuffer` et ajuste `<a:ext>` (taille du cadre) au ratio
- * largeur/hauteur réel de la nouvelle image. Contrairement à
- * `replaceChartImage`, la nouvelle image ici ne vise pas le ratio du cadre
- * existant (elle suit le contenu naturel du graphique capturé depuis le
- * PDF) : c'est le cadre qui s'adapte à elle, pas l'inverse.
+ * par `newImageBuffer`, en ajustant `<a:ext>` (taille) au ratio
+ * largeur/hauteur réel de la nouvelle image — contrairement à
+ * `replaceChartImage`, cette image ne vise pas le ratio du cadre existant
+ * (elle suit le contenu naturel du graphique capturé depuis le PDF) : c'est
+ * le cadre qui s'adapte à elle, pas l'inverse.
  *
- * La taille est calculée en "contain" dans l'espace disponible entre le
- * coin haut-gauche du cadre d'origine (`<a:off>`, inchangé) et les bords
- * droit/bas de la diapositive (`<p:sldSz>`) — le cadre d'origine occupait
- * déjà exactement cet espace (x + cx = largeur diapo). Sans ce calcul, une
- * image dont le ratio naturel est plus "haut" que celui du cadre d'origine
- * déborderait sous la diapositive (rognée par PowerPoint, pas par nous).
+ * La taille est calculée en "contain" dans l'espace disponible entre la
+ * marge d'origine du cadre (`x`, réutilisée comme marge symétrique
+ * gauche/droite) et le haut du bandeau de pied de page (`FOOTER_TOP`).
+ * `<a:off>` est ensuite recalculé (pas conservé tel quel) pour que l'image
+ * reste centrée horizontalement et que son bas touche juste le haut du
+ * bandeau, quelle que soit la taille obtenue.
  */
 export async function replaceMonthlyChartImage(
   zip: Pptx,
@@ -94,8 +98,8 @@ export async function replaceMonthlyChartImage(
       `<a:off>/<a:ext> introuvable(s) dans le <p:pic> de ${SLIDE3_ENTRY} (le template a peut-être changé).`,
     );
   }
-  const x = requireAttr(off, X_PATTERN, "x", SLIDE3_ENTRY);
-  const y = requireAttr(off, Y_PATTERN, "y", SLIDE3_ENTRY);
+  const marginX = requireAttr(off, X_PATTERN, "x", SLIDE3_ENTRY);
+  const topBoundary = requireAttr(off, Y_PATTERN, "y", SLIDE3_ENTRY);
 
   const sldSz = getEntryText(zip, PRESENTATION_ENTRY).match(SLD_SZ_PATTERN)?.[0];
   if (!sldSz) {
@@ -104,16 +108,19 @@ export async function replaceMonthlyChartImage(
     );
   }
   const slideWidth = requireAttr(sldSz, CX_PATTERN, "cx", PRESENTATION_ENTRY);
-  const slideHeight = requireAttr(sldSz, CY_PATTERN, "cy", PRESENTATION_ENTRY);
 
-  const maxCx = slideWidth - x;
-  const maxCy = slideHeight - y;
+  const maxCx = slideWidth - 2 * marginX;
+  const maxCy = FOOTER_TOP - topBoundary;
 
   const image = await loadImage(newImageBuffer);
   const scale = Math.min(maxCx / image.width, maxCy / image.height);
   const cx = Math.round(image.width * scale);
   const cy = Math.round(image.height * scale);
+  const newX = Math.round((slideWidth - cx) / 2);
+  const newY = FOOTER_TOP - cy;
 
-  const newPicBlock = picBlock.replace(ext, `<a:ext cx="${cx}" cy="${cy}"/>`);
+  const newPicBlock = picBlock
+    .replace(off, `<a:off x="${newX}" y="${newY}"/>`)
+    .replace(ext, `<a:ext cx="${cx}" cy="${cy}"/>`);
   setEntryText(zip, SLIDE3_ENTRY, xml.replace(picBlock, newPicBlock));
 }

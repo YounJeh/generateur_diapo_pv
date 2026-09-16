@@ -13,12 +13,13 @@ import {
 
 const FIXTURE_PPTX = "test/data/scenario 1 avec stockage Projet_Ombriere_Rixhiem.pptx";
 const OUTPUT_DIR = "test/output";
-// Espace disponible dans la fixture entre le coin haut-gauche du cadre
-// d'origine (<a:off> de slide3.xml) et les bords droit/bas de la diapo
-// (<p:sldSz> de presentation.xml) : slideWidth - x = 12192000 - 168275,
-// slideHeight - y = 6858000 - 1740280.
-const MAX_CX = 12023725;
-const MAX_CY = 5117720;
+// Dérivés des constantes de la fixture (slideWidth=12192000, marginX (x
+// d'origine)=168275, topBoundary (y d'origine)=1740280, FOOTER_TOP=6419850) :
+// maxCx = slideWidth - 2*marginX, maxCy = FOOTER_TOP - topBoundary.
+const MAX_CX = 11855450;
+const MAX_CY = 4679570;
+const SLIDE_WIDTH = 12192000;
+const FOOTER_TOP = 6419850;
 
 function hash(buffer: Buffer): string {
   return createHash("md5").update(buffer).digest("hex");
@@ -33,16 +34,17 @@ function dummyPng(width: number, height: number): Buffer {
 }
 
 describe("replaceMonthlyChartImage", () => {
-  it("fits a tall image inside the available height, capping cy at the slide's bottom edge", async () => {
+  it("fits a tall image inside the available height, centers it and rests its bottom on the footer", async () => {
     mkdirSync(OUTPUT_DIR, { recursive: true });
     const outputPath = `${OUTPUT_DIR}/replace-monthly-chart-image-tall.pptx`;
 
     const original = openPptx(FIXTURE_PPTX);
     const zip = openPptx(FIXTURE_PPTX);
     // Ratio 2:1 : plus "haut" que la boîte disponible (MAX_CX/MAX_CY ≈
-    // 2.35), donc contrainte par la hauteur. scale = MAX_CY / 400.
+    // 2.53), donc contrainte par la hauteur. scale = MAX_CY / 400.
     const newImage = dummyPng(800, 400);
     const scale = MAX_CY / 400;
+    const cx = Math.round(800 * scale);
 
     await replaceMonthlyChartImage(zip, newImage);
     writePptx(zip, outputPath);
@@ -54,9 +56,11 @@ describe("replaceMonthlyChartImage", () => {
     );
 
     const slide3Xml = getEntryText(output, "ppt/slides/slide3.xml");
-    expect(slide3Xml).toContain('<a:off x="168275" y="1740280"/>');
+    expect(slide3Xml).toContain(`<a:ext cx="${cx}" cy="${MAX_CY}"/>`);
+    // Centré horizontalement ; bas de l'image = FOOTER_TOP (juste au-dessus
+    // du bandeau).
     expect(slide3Xml).toContain(
-      `<a:ext cx="${Math.round(800 * scale)}" cy="${MAX_CY}"/>`,
+      `<a:off x="${Math.round((SLIDE_WIDTH - cx) / 2)}" y="${FOOTER_TOP - MAX_CY}"/>`,
     );
 
     for (const entry of original.getEntries()) {
@@ -72,18 +76,20 @@ describe("replaceMonthlyChartImage", () => {
     }
   });
 
-  it("fits a wide image inside the available width, capping cx at the slide's right edge", async () => {
+  it("fits a wide image inside the available width, centers it and rests its bottom on the footer", async () => {
     const zip = openPptx(FIXTURE_PPTX);
     // Ratio 40:1 : bien plus "large" que la boîte disponible, donc
     // contrainte par la largeur. scale = MAX_CX / 4000.
     const newImage = dummyPng(4000, 100);
     const scale = MAX_CX / 4000;
+    const cy = Math.round(100 * scale);
 
     await replaceMonthlyChartImage(zip, newImage);
 
     const slide3Xml = getEntryText(zip, "ppt/slides/slide3.xml");
+    expect(slide3Xml).toContain(`<a:ext cx="${MAX_CX}" cy="${cy}"/>`);
     expect(slide3Xml).toContain(
-      `<a:ext cx="${MAX_CX}" cy="${Math.round(100 * scale)}"/>`,
+      `<a:off x="${Math.round((SLIDE_WIDTH - MAX_CX) / 2)}" y="${FOOTER_TOP - cy}"/>`,
     );
   });
 
