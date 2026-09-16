@@ -6,7 +6,7 @@ import type { SlideValues } from "../types.js";
  * Chaque clé doit correspondre mot pour mot au contenu d'un <a:t> du
  * template original (vérifié pendant le planning).
  *
- * Note : le run final "52%" (estimation marketing "avec stockage") n'est
+ * Note : le run final "65%" (estimation marketing "avec stockage") n'est
  * volontairement PAS inclus ici — décision utilisateur confirmée, hors
  * périmètre de cette version. Il est signalé séparément par l'appelant
  * (voir cli.ts) plutôt que traité comme un remplacement.
