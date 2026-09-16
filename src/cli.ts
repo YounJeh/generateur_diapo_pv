@@ -1,72 +1,13 @@
 #!/usr/bin/env node
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
-import { buildStorageValues, buildValues } from "./calc.js";
-import {
-  renderAnnualResultsChart,
-  renderAnnualResultsChartStorage,
-} from "./chart/annualResultsChart.js";
-import { checkDimensioningConsistency } from "./dimensioningCheck.js";
-import { openPdfPage } from "./pdf/document.js";
-import { extractFromPdfText, extractFromPdfTextStorage } from "./pdf/extractValues.js";
-import { findMonthlyEnergyChartBounds } from "./pdf/monthlyEnergyChartBounds.js";
-import { getPageTexts } from "./pdf/reader.js";
-import { renderChartImage } from "./pdf/renderChart.js";
-import { appendSlides } from "./pptx/mergeSlides.js";
-import { replaceChartImage, replaceMonthlyChartImage } from "./pptx/replaceImage.js";
-import { replaceRuns } from "./pptx/replaceText.js";
-import { buildSlide1Replacements } from "./pptx/slide1Map.js";
-import {
-  SLIDE2_OUT_OF_SCOPE_TEXTS,
-  buildSlide2Replacements,
-} from "./pptx/slide2Map.js";
-import {
-  buildSlide2ReplacementsStorage,
-  buildSlide3ReplacementsStorage,
-} from "./pptx/slide2MapStorage.js";
-import {
-  getEntryText,
-  openPptx,
-  setEntryText,
-  writePptx,
-  type Pptx,
-} from "./pptx/zip.js";
+import { buildComparaisonPptx, type CaseResult } from "./generate/comparaison.js";
+import { extractSansStockage, extractStockage } from "./generate/extract.js";
+import { renderSansStockage, renderStockage } from "./generate/render.js";
+import { SCENARIOS, type Groupe, type Scenario, type TemplateScenario } from "./generate/types.js";
+import { SLIDE2_OUT_OF_SCOPE_TEXTS } from "./pptx/slide2Map.js";
+import { writePptx } from "./pptx/zip.js";
 import type { SlideValues, StorageSlideValues } from "./types.js";
-
-type Scenario = "sans-stockage" | "stockage" | "comparaison";
-/** Scénarios adossés à un unique template pptx (à l'exclusion de "comparaison", qui combine les deux). */
-type TemplateScenario = Extract<Scenario, "sans-stockage" | "stockage">;
-
-const SCENARIOS: readonly Scenario[] = ["sans-stockage", "stockage", "comparaison"];
-
-const TEMPLATE_PPTX: Record<TemplateScenario, string> = {
-  "sans-stockage": "assets/templates/template-sans-stockage.pptx",
-  stockage: "assets/templates/template-avec-stockage.pptx",
-};
-
-const CHART_IMAGE_ENTRY: Record<TemplateScenario, string> = {
-  "sans-stockage": "ppt/media/image8.png",
-  stockage: "ppt/media/image5.png",
-};
-
-const MONTHLY_CHART_PAGE_NUMBER = 3;
-/** Numéros de slides d'un template, hors slide de titre (slide 1). */
-const CONTENT_SLIDE_NUMBERS: Record<TemplateScenario, readonly number[]> = {
-  "sans-stockage": [2],
-  stockage: [2, 3],
-};
-
-/**
- * Groupe de dimensionnement pour le scénario "comparaison" : un nombre de
- * rangées (donc une puissance) donné, avec un cas sans-stockage et/ou un cas
- * avec-stockage. Deux PDF appartiennent au même groupe s'ils décrivent le
- * même dimensionnement physique (mêmes ombrières/puissance).
- */
-interface Groupe {
-  rangees: number;
-  pdfSansStockage?: string;
-  pdfAvecStockage?: string;
-}
 
 type CliArgs =
   | { scenario: TemplateScenario; pdf: string; rangees: number; output: string }
@@ -192,31 +133,7 @@ function parseGroupes(args: Map<string, string>): Groupe[] {
   });
 }
 
-/** Applique les remplacements de slide 1 (identiques pour les deux scénarios) et renvoie le nombre appliqué. */
-function applySlide1Replacements(
-  zip: Pptx,
-  values: SlideValues,
-  scenarioNumero = 1,
-): number {
-  const slide1Xml = getEntryText(zip, "ppt/slides/slide1.xml");
-  const { xml: newSlide1Xml, applied } = replaceRuns(
-    slide1Xml,
-    buildSlide1Replacements(values, scenarioNumero),
-  );
-  setEntryText(zip, "ppt/slides/slide1.xml", newSlide1Xml);
-  return applied.length;
-}
-
-async function runSansStockage(
-  zip: Pptx,
-  page1Text: string,
-  page2Text: string,
-  rangees: number,
-  scenarioNumero = 1,
-): Promise<SlideValues> {
-  const extracted = extractFromPdfText(page1Text, page2Text);
-  const values = buildValues(extracted, rangees);
-
+function printExtractedSansStockage(values: SlideValues): void {
   console.log("Valeurs extraites du PDF :");
   console.log(`  Nombre de modules          : ${values.nombreModules}`);
   console.log(`  Production annuelle        : ${values.productionAnnuelleMwh} MWh`);
@@ -226,41 +143,9 @@ async function runSansStockage(
   console.log(`  Taux d'autoproduction      : ${values.tauxAutoproduction} %`);
   console.log(`  Nombre de rangées (manuel) : ${values.rangees}`);
   console.log(`Puissance installée calculée : ${values.puissanceInstallee} kWc`);
-
-  const slide1Applied = applySlide1Replacements(zip, values, scenarioNumero);
-
-  const slide2Xml = getEntryText(zip, "ppt/slides/slide2.xml");
-  const { xml: newSlide2Xml, applied: slide2Applied } = replaceRuns(
-    slide2Xml,
-    buildSlide2Replacements(values),
-  );
-  setEntryText(zip, "ppt/slides/slide2.xml", newSlide2Xml);
-
-  console.log(
-    `\nRemplacements de texte appliqués : ${slide1Applied + slide2Applied.length} (slide 1 : ${slide1Applied}, slide 2 : ${slide2Applied.length})`,
-  );
-  console.log(
-    `Laissé(s) inchangé(s) volontairement, hors périmètre : ${SLIDE2_OUT_OF_SCOPE_TEXTS.join(", ")}`,
-  );
-
-  const chartImage = renderAnnualResultsChart(values);
-  replaceChartImage(zip, chartImage, CHART_IMAGE_ENTRY["sans-stockage"]);
-  console.log("Image du graphique (slide 2) remplacée.");
-
-  return values;
 }
 
-async function runStockage(
-  zip: Pptx,
-  pdf: string,
-  page1Text: string,
-  page2Text: string,
-  rangees: number,
-  scenarioNumero = 1,
-): Promise<StorageSlideValues> {
-  const extracted = extractFromPdfTextStorage(page1Text, page2Text);
-  const values = buildStorageValues(extracted, rangees);
-
+function printExtractedStockage(values: StorageSlideValues): void {
   console.log("Valeurs extraites du PDF :");
   console.log(`  Nombre de modules              : ${values.nombreModules}`);
   console.log(`  Production annuelle            : ${values.productionAnnuelleMwh} MWh`);
@@ -269,139 +154,59 @@ async function runStockage(
   console.log(`  Taux d'autoproduction (stockage): ${values.tauxAutoproductionStockage} %`);
   console.log(`  Nombre de rangées (manuel)      : ${values.rangees}`);
   console.log(`Puissance installée calculée      : ${values.puissanceInstallee} kWc`);
+}
 
-  const slide1Applied = applySlide1Replacements(zip, values, scenarioNumero);
-
-  const slide2Xml = getEntryText(zip, "ppt/slides/slide2.xml");
-  const { xml: newSlide2Xml, applied: slide2Applied } = replaceRuns(
-    slide2Xml,
-    buildSlide2ReplacementsStorage(values),
-  );
-  setEntryText(zip, "ppt/slides/slide2.xml", newSlide2Xml);
-
-  const slide3TitleXml = getEntryText(zip, "ppt/slides/slide3.xml");
-  const { xml: newSlide3TitleXml, applied: slide3Applied } = replaceRuns(
-    slide3TitleXml,
-    buildSlide3ReplacementsStorage(values),
-  );
-  setEntryText(zip, "ppt/slides/slide3.xml", newSlide3TitleXml);
-
+function printRenderSummarySansStockage(slide1Applied: number, slide2Applied: number): void {
   console.log(
-    `\nRemplacements de texte appliqués : ${slide1Applied + slide2Applied.length + slide3Applied.length} (slide 1 : ${slide1Applied}, slide 2 : ${slide2Applied.length}, slide 3 : ${slide3Applied.length})`,
+    `\nRemplacements de texte appliqués : ${slide1Applied + slide2Applied} (slide 1 : ${slide1Applied}, slide 2 : ${slide2Applied})`,
   );
-
-  const chartImage = renderAnnualResultsChartStorage(values);
-  replaceChartImage(zip, chartImage, CHART_IMAGE_ENTRY.stockage);
+  console.log(
+    `Laissé(s) inchangé(s) volontairement, hors périmètre : ${SLIDE2_OUT_OF_SCOPE_TEXTS.join(", ")}`,
+  );
   console.log("Image du graphique (slide 2) remplacée.");
+}
 
-  const monthlyChartPage = await openPdfPage(pdf, MONTHLY_CHART_PAGE_NUMBER);
-  const monthlyChartBounds = await findMonthlyEnergyChartBounds(monthlyChartPage);
-  const monthlyChartImage = await renderChartImage(
-    pdf,
-    MONTHLY_CHART_PAGE_NUMBER,
-    monthlyChartBounds,
+function printRenderSummaryStockage(
+  slide1Applied: number,
+  slide2Applied: number,
+  slide3Applied: number,
+): void {
+  console.log(
+    `\nRemplacements de texte appliqués : ${slide1Applied + slide2Applied + slide3Applied} (slide 1 : ${slide1Applied}, slide 2 : ${slide2Applied}, slide 3 : ${slide3Applied})`,
   );
-  await replaceMonthlyChartImage(zip, monthlyChartImage);
+  console.log("Image du graphique (slide 2) remplacée.");
   console.log("Image du graphique (slide 3) remplacée.");
-
-  return values;
 }
 
-interface Cas {
-  scenario: TemplateScenario;
-  pdf: string;
-}
-
-/** Cas d'un groupe, dans l'ordre d'assemblage voulu : sans-stockage avant avec-stockage. */
-function orderedCases(groupe: Groupe): Cas[] {
-  const cases: Cas[] = [];
-  if (groupe.pdfSansStockage) {
-    cases.push({ scenario: "sans-stockage", pdf: groupe.pdfSansStockage });
+function printCaseResult(cas: CaseResult): void {
+  if (cas.scenario === "sans-stockage") {
+    printExtractedSansStockage(cas.values as SlideValues);
+    printRenderSummarySansStockage(cas.slide1Applied, cas.slide2Applied);
+  } else {
+    printExtractedStockage(cas.values as StorageSlideValues);
+    printRenderSummaryStockage(cas.slide1Applied, cas.slide2Applied, cas.slide3Applied!);
   }
-  if (groupe.pdfAvecStockage) {
-    cases.push({ scenario: "stockage", pdf: groupe.pdfAvecStockage });
-  }
-  return cases;
 }
 
-/**
- * Scénario "comparaison" : assemble N groupes de dimensionnement dans
- * l'ordre donné. Chaque groupe fournit un cas sans-stockage et/ou un cas
- * avec-stockage (même dimensionnement, donc même --groupe-N-rangees) ; à
- * l'intérieur d'un groupe, sans-stockage précède avec-stockage. Le premier
- * cas de chaque groupe apporte sa slide de titre (renumérotée "SCENARIO N"
- * selon la position du groupe) ; les cas suivants n'apportent que leurs
- * slides de contenu. La cohérence de dimensionnement (modules/puissance)
- * entre les deux cas d'un même groupe est vérifiée (avertissement non
- * bloquant) ; aucune vérification n'est faite entre groupes, qui décrivent
- * intentionnellement des dimensionnements différents.
- */
 async function runComparaison(groupes: Groupe[], output: string): Promise<void> {
-  let baseZip: Pptx | undefined;
-  let totalSlides = 0;
+  const result = await buildComparaisonPptx(groupes);
 
-  for (let groupeIndex = 0; groupeIndex < groupes.length; groupeIndex += 1) {
-    const groupe = groupes[groupeIndex];
-    const scenarioNumero = groupeIndex + 1;
-    const cases = orderedCases(groupe);
-    console.log(`\n=== Groupe ${scenarioNumero} (${groupe.rangees} rangées) ===`);
-
-    let sansValues: SlideValues | undefined;
-    let avecValues: StorageSlideValues | undefined;
-
-    for (let caseIndex = 0; caseIndex < cases.length; caseIndex += 1) {
-      const isGroupeFirstCase = caseIndex === 0;
-      const cas = cases[caseIndex];
-      const [page1Text, page2Text] = await getPageTexts(cas.pdf, [1, 2]);
-      const zip = openPptx(TEMPLATE_PPTX[cas.scenario]);
-
-      if (cas.scenario === "sans-stockage") {
-        sansValues = await runSansStockage(
-          zip,
-          page1Text,
-          page2Text,
-          groupe.rangees,
-          scenarioNumero,
-        );
-      } else {
-        avecValues = await runStockage(
-          zip,
-          cas.pdf,
-          page1Text,
-          page2Text,
-          groupe.rangees,
-          scenarioNumero,
-        );
-      }
-
-      if (!baseZip) {
-        baseZip = zip;
-        totalSlides += CONTENT_SLIDE_NUMBERS[cas.scenario].length + 1;
-        continue;
-      }
-
-      const slideNumbers = isGroupeFirstCase
-        ? [1, ...CONTENT_SLIDE_NUMBERS[cas.scenario]]
-        : CONTENT_SLIDE_NUMBERS[cas.scenario];
-      appendSlides(baseZip, zip, slideNumbers);
-      totalSlides += slideNumbers.length;
+  for (const groupe of result.groupes) {
+    console.log(`\n=== Groupe ${groupe.scenarioNumero} (${groupe.rangees} rangées) ===`);
+    for (const cas of groupe.cases) {
+      printCaseResult(cas);
     }
-
-    if (sansValues && avecValues) {
-      for (const warning of checkDimensioningConsistency(sansValues, avecValues)) {
-        console.warn(`Avertissement (groupe ${scenarioNumero}) : ${warning}`);
+    for (const warning of result.warnings) {
+      if (warning.startsWith(`Avertissement (groupe ${groupe.scenarioNumero}) `)) {
+        console.warn(warning);
       }
     }
-  }
-
-  if (!baseZip) {
-    throw new Error("Aucun groupe valide fourni pour le scénario comparaison.");
   }
 
   await mkdir(path.dirname(output), { recursive: true });
-  writePptx(baseZip, output);
+  writePptx(result.zip, output);
   console.log(
-    `\nFichier généré (comparaison, ${groupes.length} groupe(s), ${totalSlides} slides) : ${output}`,
+    `\nFichier généré (comparaison, ${groupes.length} groupe(s), ${result.totalSlides} slides) : ${output}`,
   );
 }
 
@@ -414,17 +219,26 @@ async function run(argv: string[]): Promise<void> {
   }
 
   const { pdf, rangees, output, scenario } = args;
-  const [page1Text, page2Text] = await getPageTexts(pdf, [1, 2]);
-  const zip = openPptx(TEMPLATE_PPTX[scenario]);
 
   if (scenario === "sans-stockage") {
-    await runSansStockage(zip, page1Text, page2Text, rangees);
+    const values = await extractSansStockage(pdf, rangees);
+    printExtractedSansStockage(values);
+    const { zip, slide1Applied, slide2Applied } = renderSansStockage(values);
+    printRenderSummarySansStockage(slide1Applied, slide2Applied);
+    await mkdir(path.dirname(output), { recursive: true });
+    writePptx(zip, output);
   } else {
-    await runStockage(zip, pdf, page1Text, page2Text, rangees);
+    const values = await extractStockage(pdf, rangees);
+    printExtractedStockage(values);
+    const { zip, slide1Applied, slide2Applied, slide3Applied } = await renderStockage(
+      pdf,
+      values,
+    );
+    printRenderSummaryStockage(slide1Applied, slide2Applied, slide3Applied);
+    await mkdir(path.dirname(output), { recursive: true });
+    writePptx(zip, output);
   }
 
-  await mkdir(path.dirname(output), { recursive: true });
-  writePptx(zip, output);
   console.log(`\nFichier généré : ${output}`);
 }
 
