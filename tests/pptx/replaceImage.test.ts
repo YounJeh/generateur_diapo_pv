@@ -11,8 +11,7 @@ import {
   writePptx,
 } from "../../src/pptx/zip.js";
 
-const FIXTURE_PPTX =
-  "test/data/Scenario 1 sans stockage Projet_Ombriere_Rixhiem.pptx";
+const FIXTURE_PPTX = "assets/templates/template-sans-stockage.pptx";
 const OUTPUT_DIR = "test/output";
 
 function hash(buffer: Buffer): string {
@@ -72,8 +71,7 @@ describe("replaceChartImage", () => {
   });
 
   it("swaps a different image entry when passed explicitly (storage template)", () => {
-    const STORAGE_FIXTURE_PPTX =
-      "test/data/scenario 1 avec stockage Projet_Ombriere_Rixhiem.pptx";
+    const STORAGE_FIXTURE_PPTX = "assets/templates/template-avec-stockage.pptx";
     mkdirSync(OUTPUT_DIR, { recursive: true });
     const outputPath = `${OUTPUT_DIR}/replace-image-storage.pptx`;
 

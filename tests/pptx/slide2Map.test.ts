@@ -6,8 +6,7 @@ import {
 import { getEntryText, openPptx } from "../../src/pptx/zip.js";
 import type { SlideValues } from "../../src/types.js";
 
-const FIXTURE_PPTX =
-  "test/data/Scenario 1 sans stockage Projet_Ombriere_Rixhiem.pptx";
+const FIXTURE_PPTX = "assets/templates/template-sans-stockage.pptx";
 
 const values: SlideValues = {
   nombreModules: 750,
@@ -37,31 +36,31 @@ describe("buildSlide2Replacements", () => {
     }
   });
 
-  it("does not include the out-of-scope '52%' text as a key or a value", () => {
+  it("does not include the out-of-scope '65%' text as a key or a value", () => {
     const replacements = buildSlide2Replacements(values);
     for (const [oldText, newText] of replacements) {
-      expect(oldText).not.toBe("52%");
-      expect(newText).not.toContain("52%");
+      expect(oldText).not.toBe("65%");
+      expect(newText).not.toContain("65%");
     }
-    expect(SLIDE2_OUT_OF_SCOPE_TEXTS).toContain("52%");
+    expect(SLIDE2_OUT_OF_SCOPE_TEXTS).toContain("65%");
   });
 
   it("produces the expected replacement text for each field", () => {
     const replacements = buildSlide2Replacements(values);
-    expect(replacements.get("744")).toBe("750");
-    expect(replacements.get("347 760 kWh")).toBe("350 730 kWh");
-    expect(replacements.get("77,0 %")).toBe("77 %");
-    expect(replacements.get("Taux d’autoconsommation : 71 %")).toBe(
+    expect(replacements.get("200")).toBe("750");
+    expect(replacements.get("150 000 kWh")).toBe("350 730 kWh");
+    expect(replacements.get("80,0 %")).toBe("77 %");
+    expect(replacements.get("Taux d’autoconsommation : 60 %")).toBe(
       "Taux d’autoconsommation : 71 %",
     );
     expect(
       replacements.get(
-        "29 % restants correspondent à un surplus de production",
+        "40 % restants correspondent à un surplus de production",
       ),
     ).toBe("29 % restants correspondent à un surplus de production");
-    expect(replacements.get("38 % de vos besoins en électricité")).toBe(
+    expect(replacements.get("45 % de vos besoins en électricité")).toBe(
       "38 % de vos besoins en électricité",
     );
-    expect(replacements.get("29 % de surplus")).toBe("29 % de surplus");
+    expect(replacements.get("40 % de surplus")).toBe("29 % de surplus");
   });
 });
