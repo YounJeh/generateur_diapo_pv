@@ -6,11 +6,13 @@ import {
   renderAnnualResultsChart,
   renderAnnualResultsChartStorage,
 } from "./chart/annualResultsChart.js";
+import { checkDimensioningConsistency } from "./dimensioningCheck.js";
 import { openPdfPage } from "./pdf/document.js";
 import { extractFromPdfText, extractFromPdfTextStorage } from "./pdf/extractValues.js";
 import { findMonthlyEnergyChartBounds } from "./pdf/monthlyEnergyChartBounds.js";
 import { getPageTexts } from "./pdf/reader.js";
 import { renderChartImage } from "./pdf/renderChart.js";
+import { appendSlides } from "./pptx/mergeSlides.js";
 import { replaceChartImage, replaceMonthlyChartImage } from "./pptx/replaceImage.js";
 import { replaceRuns } from "./pptx/replaceText.js";
 import { buildSlide1Replacements } from "./pptx/slide1Map.js";
@@ -28,32 +30,43 @@ import {
 } from "./pptx/zip.js";
 import type { SlideValues } from "./types.js";
 
-type Scenario = "sans-stockage" | "stockage";
+type Scenario = "sans-stockage" | "stockage" | "comparaison";
+/** Scénarios adossés à un unique template pptx (à l'exclusion de "comparaison", qui combine les deux). */
+type TemplateScenario = Extract<Scenario, "sans-stockage" | "stockage">;
 
-const SCENARIOS: readonly Scenario[] = ["sans-stockage", "stockage"];
+const SCENARIOS: readonly Scenario[] = ["sans-stockage", "stockage", "comparaison"];
 
-const TEMPLATE_PPTX: Record<Scenario, string> = {
+const TEMPLATE_PPTX: Record<TemplateScenario, string> = {
   "sans-stockage":
     "test/data/Scenario 1 sans stockage Projet_Ombriere_Rixhiem.pptx",
   stockage: "test/data/scenario 1 avec stockage Projet_Ombriere_Rixhiem.pptx",
 };
 
-const CHART_IMAGE_ENTRY: Record<Scenario, string> = {
+const CHART_IMAGE_ENTRY: Record<TemplateScenario, string> = {
   "sans-stockage": "ppt/media/image8.png",
   stockage: "ppt/media/image5.png",
 };
 
 const MONTHLY_CHART_PAGE_NUMBER = 3;
+/** Numéros des slides du template "avec stockage" reportées dans le pptx de comparaison. */
+const COMPARAISON_APPENDED_SLIDES = [2, 3];
 
-interface CliArgs {
-  pdf: string;
-  rangees: number;
-  output: string;
-  scenario: Scenario;
-}
+type CliArgs =
+  | { scenario: TemplateScenario; pdf: string; rangees: number; output: string }
+  | {
+      scenario: "comparaison";
+      pdfSansStockage: string;
+      pdfAvecStockage: string;
+      rangees: number;
+      output: string;
+    };
 
 function usage(): string {
-  return "Usage : --pdf <chemin du PDF SolarEdge> --rangees <nombre de rangées> [--scenario sans-stockage|stockage] [--output <chemin du pptx de sortie>]";
+  return [
+    "Usage :",
+    "  --pdf <chemin du PDF SolarEdge> --rangees <nombre de rangées> [--scenario sans-stockage|stockage] [--output <chemin du pptx de sortie>]",
+    "  --scenario comparaison --pdf-sans-stockage <chemin> --pdf-avec-stockage <chemin> --rangees <nombre de rangées> [--output <chemin du pptx de sortie>]",
+  ].join("\n");
 }
 
 function parseScenario(raw: string | undefined): Scenario {
@@ -79,10 +92,7 @@ function parseArgs(argv: string[]): CliArgs {
     args.set(key.slice(2), value);
   }
 
-  const pdf = args.get("pdf");
-  if (!pdf) {
-    throw new Error(`Argument manquant : --pdf. ${usage()}`);
-  }
+  const scenario = parseScenario(args.get("scenario"));
 
   const rangeesRaw = args.get("rangees");
   if (!rangeesRaw) {
@@ -97,14 +107,30 @@ function parseArgs(argv: string[]): CliArgs {
     );
   }
 
+  if (scenario === "comparaison") {
+    const pdfSansStockage = args.get("pdf-sans-stockage");
+    const pdfAvecStockage = args.get("pdf-avec-stockage");
+    if (!pdfSansStockage || !pdfAvecStockage) {
+      throw new Error(
+        `Arguments manquants : --pdf-sans-stockage et --pdf-avec-stockage sont requis pour --scenario comparaison. ${usage()}`,
+      );
+    }
+    const output =
+      args.get("output") ?? defaultOutputPath(pdfSansStockage, "_comparaison");
+    return { scenario, pdfSansStockage, pdfAvecStockage, rangees, output };
+  }
+
+  const pdf = args.get("pdf");
+  if (!pdf) {
+    throw new Error(`Argument manquant : --pdf. ${usage()}`);
+  }
   const output = args.get("output") ?? defaultOutputPath(pdf);
-  const scenario = parseScenario(args.get("scenario"));
-  return { pdf, rangees, output, scenario };
+  return { scenario, pdf, rangees, output };
 }
 
-function defaultOutputPath(pdfPath: string): string {
+function defaultOutputPath(pdfPath: string, suffix = ""): string {
   const base = path.basename(pdfPath, path.extname(pdfPath));
-  return path.join("output", `${base}.pptx`);
+  return path.join("output", `${base}${suffix}.pptx`);
 }
 
 /** Applique les remplacements de slide 1 (identiques pour les deux scénarios) et renvoie le nombre appliqué. */
@@ -205,9 +231,63 @@ async function runStockage(
   console.log("Image du graphique (slide 3) remplacée.");
 }
 
-async function run(argv: string[]): Promise<void> {
-  const { pdf, rangees, output, scenario } = parseArgs(argv);
+/**
+ * Scénario "comparaison" : lance les deux pipelines existants (sans-stockage
+ * et avec-stockage) sur leurs PDF respectifs, puis fusionne les résultats en
+ * un seul pptx de 4 slides — les 2 slides sans-stockage suivies des 2
+ * dernières slides (résultats + énergie mensuelle) du scénario avec-stockage.
+ * Suppose que les deux PDF décrivent le même dimensionnement (mêmes
+ * ombrières/puissance) ; un avertissement (non bloquant) est émis sinon.
+ */
+async function runComparaison(
+  pdfSansStockage: string,
+  pdfAvecStockage: string,
+  rangees: number,
+  output: string,
+): Promise<void> {
+  const [sansPage1Text, sansPage2Text] = await getPageTexts(pdfSansStockage, [1, 2]);
+  const sansValues = buildValues(
+    extractFromPdfText(sansPage1Text, sansPage2Text),
+    rangees,
+  );
 
+  const [avecPage1Text, avecPage2Text] = await getPageTexts(pdfAvecStockage, [1, 2]);
+  const avecValues = buildStorageValues(
+    extractFromPdfTextStorage(avecPage1Text, avecPage2Text),
+    rangees,
+  );
+
+  for (const warning of checkDimensioningConsistency(sansValues, avecValues)) {
+    console.warn(`Avertissement : ${warning}`);
+  }
+
+  const sansZip = openPptx(TEMPLATE_PPTX["sans-stockage"]);
+  await runSansStockage(sansZip, sansPage1Text, sansPage2Text, rangees);
+
+  const avecZip = openPptx(TEMPLATE_PPTX.stockage);
+  await runStockage(avecZip, pdfAvecStockage, avecPage1Text, avecPage2Text, rangees);
+
+  appendSlides(sansZip, avecZip, COMPARAISON_APPENDED_SLIDES);
+
+  await mkdir(path.dirname(output), { recursive: true });
+  writePptx(sansZip, output);
+  console.log(`\nFichier généré (comparaison, 4 slides) : ${output}`);
+}
+
+async function run(argv: string[]): Promise<void> {
+  const args = parseArgs(argv);
+
+  if (args.scenario === "comparaison") {
+    await runComparaison(
+      args.pdfSansStockage,
+      args.pdfAvecStockage,
+      args.rangees,
+      args.output,
+    );
+    return;
+  }
+
+  const { pdf, rangees, output, scenario } = args;
   const [page1Text, page2Text] = await getPageTexts(pdf, [1, 2]);
   const zip = openPptx(TEMPLATE_PPTX[scenario]);
 
