@@ -2,6 +2,7 @@ import {
   createCanvas,
   CanvasRenderingContext2D as NodeCanvasRenderingContext2D,
   DOMMatrix,
+  ImageData,
   type Canvas,
   type CanvasRenderingContext2D,
 } from "canvas";
@@ -9,31 +10,38 @@ import { applyPath2DToCanvasRenderingContext, Path2D } from "path2d";
 import type { PDFPageProxy } from "pdfjs-dist";
 import { CHART_FONT_FAMILY } from "../chart/fonts.js";
 
-// Node n'a pas de DOMMatrix global ; pdfjs en a besoin pour peindre les
-// motifs à hachures (ex. le losange "Perte d'écrêtage" de la légende) via
-// TilingPattern.setTransform, sans quoi le rendu échoue avec "Expected
-// DOMMatrix". Le polyfill vient de node-canvas, déjà en dépendance. `lib`
-// du tsconfig n'inclut pas "DOM", d'où le cast (globalThis n'a pas ce champ
-// typé).
-const globalWithDOMMatrix = globalThis as { DOMMatrix?: typeof DOMMatrix };
-globalWithDOMMatrix.DOMMatrix ??= DOMMatrix;
-
-// pdfjs a aussi besoin d'un `Path2D` global pour peindre certains clips/motifs
-// (ex. le même losange de hachures) — node-canvas n'en fournit pas
-// (contrairement à @napi-rs/canvas, que pdfjs essaie de charger en premier et
-// dont l'absence dégrade silencieusement en `Cannot polyfill Path2D` sans
-// jamais planter... jusqu'à ce qu'un rendu en ait réellement besoin, ce qui
-// n'arrive qu'avec certains PDF, d'où l'absence de symptôme en local avant un
-// vrai déploiement). `path2d` comble ce manque : `applyPath2D...` apprend à
-// `fill`/`stroke`/`clip` de node-canvas à accepter une instance `Path2D`.
-// Cast : les types de node-canvas et de `path2d` pour `CanvasRenderingContext2D`
-// ne s'alignent pas exactement (ex. la surcharge de `isPointInPath`), mais
-// l'usage runtime suit exactement le README de `path2d` pour node-canvas.
+/**
+ * pdfjs (même en environnement Node) a besoin de `DOMMatrix`/`ImageData`/
+ * `Path2D` globaux pour peindre certains éléments (ex. le motif à hachures du
+ * losange "Perte d'écrêtage" de la légende, via TilingPattern.setTransform) —
+ * sans quoi le rendu échoue ("Expected DOMMatrix", "Path2D/ImageData is not
+ * defined"). pdfjs essaie de les obtenir en import(ant) `@napi-rs/canvas`,
+ * pas notre dépendance (`canvas`/node-canvas) ; cet échec est silencieux
+ * (juste un `warn`) et ne plante qu'au premier rendu qui a *réellement*
+ * besoin de l'un de ces globaux — ce qui n'arrivait avec aucun PDF testé en
+ * local, d'où l'absence de symptôme avant un vrai déploiement.
+ *
+ * `DOMMatrix`/`ImageData` viennent directement de node-canvas. `Path2D` n'y
+ * existe pas (contrairement à @napi-rs/canvas) : le paquet `path2d` comble ce
+ * manque, et `applyPath2DToCanvasRenderingContext` apprend en plus à
+ * fill/stroke/clip de node-canvas à accepter une instance `Path2D`.
+ *
+ * `lib` du tsconfig n'inclut pas "DOM", d'où les casts (globalThis n'a pas
+ * ces champs typés ; les types de node-canvas et de `path2d` pour
+ * `CanvasRenderingContext2D` ne s'alignent pas non plus exactement, ex. la
+ * surcharge de `isPointInPath` — l'usage runtime suit le README de `path2d`).
+ */
+const globalWithCanvasPolyfills = globalThis as {
+  DOMMatrix?: typeof DOMMatrix;
+  ImageData?: typeof ImageData;
+  Path2D?: typeof Path2D;
+};
+globalWithCanvasPolyfills.DOMMatrix ??= DOMMatrix;
+globalWithCanvasPolyfills.ImageData ??= ImageData;
 applyPath2DToCanvasRenderingContext(
   NodeCanvasRenderingContext2D as unknown as Parameters<typeof applyPath2DToCanvasRenderingContext>[0],
 );
-const globalWithPath2D = globalThis as { Path2D?: typeof Path2D };
-globalWithPath2D.Path2D ??= Path2D;
+globalWithCanvasPolyfills.Path2D ??= Path2D;
 
 /**
  * pdfjs crée aussi ses propres canvas internes pendant le rendu (groupes de
