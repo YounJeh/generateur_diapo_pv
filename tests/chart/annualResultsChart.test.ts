@@ -49,8 +49,8 @@ describe("renderAnnualResultsChart", () => {
 
     // Bornes horizontales des barres dans le module (barX .. barX + barMaxW) :
     // on limite le scan à cette plage pour ne jamais atteindre la légende.
-    const BAR_X_START = 324;
-    const BAR_X_END = 324 + 1150;
+    const BAR_X_START = 404;
+    const BAR_X_END = 404 + 1150;
 
     function barWidthAtRow(y: number): number {
       const { data } = context.getImageData(
@@ -74,8 +74,8 @@ describe("renderAnnualResultsChart", () => {
       return lastFilled - firstFilled;
     }
 
-    const productionBarWidth = barWidthAtRow(165);
-    const consommationBarWidth = barWidthAtRow(340);
+    const productionBarWidth = barWidthAtRow(175);
+    const consommationBarWidth = barWidthAtRow(365);
     expect(productionBarWidth).toBeLessThan(consommationBarWidth);
   });
 });
