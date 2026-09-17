@@ -18,18 +18,18 @@ comment if it ends up below 2×. Do not change `barMaxW` (bar length stays propo
 Do not reposition the legend or footnote (same layout shape, just bigger).
 
 **Acceptance criteria:**
-- [ ] `barH` and font-size constants are visibly larger than today (target 2×, may be less if
-      required to avoid overlap)
-- [ ] No element overlaps another when rendered, for both the 2-segment (sans-stockage) and
+- [x] `barH` and font-size constants are visibly larger than today (target 2×, may be less if
+      required to avoid overlap) — done: ~1.5-1.75x depending on element (barH 24→42, total number
+      44→62px, etc.), labelW widened 260→340 to fit the bigger total number
+- [x] No element overlaps another when rendered, for both the 2-segment (sans-stockage) and
       3-segment (avec-stockage) variants
-- [ ] Bar length (`barMaxW`-derived) still encodes the MWh value proportionally, unchanged
+- [x] Bar length (`barMaxW`-derived) still encodes the MWh value proportionally, unchanged
 
 **Verification:**
-- [ ] Tests pass: `npm test -- tests/chart/annualResultsChart.test.ts tests/chart/annualResultsChartStorage.test.ts`
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: render both variants to PNG (e.g. via a throwaway script calling
-      `renderAnnualResultsChart`/`renderAnnualResultsChartStorage` with fixture values and writing
-      `canvas.toBuffer()` to a file) and visually confirm no overlap and a clear size increase
+- [x] Tests pass: `npm test -- tests/chart/annualResultsChart.test.ts tests/chart/annualResultsChartStorage.test.ts`
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: rendered both variants to PNG and visually confirmed — no overlap, clearly
+      bigger
 
 **Dependencies:** None
 
@@ -52,17 +52,17 @@ stays a drop-in target for the end user in PowerPoint. This can be done as a sma
 bytes, and writes the result to `assets/templates/`.
 
 **Acceptance criteria:**
-- [ ] `assets/templates/template-intro-conclusion.pptx` exists, contains the same 2 slides as the
+- [x] `assets/templates/template-intro-conclusion.pptx` exists, contains the same 2 slides as the
       source, opens cleanly (no corruption)
-- [ ] Slide 1's logo picture shape is present at the same position/size, but its image content is
+- [x] Slide 1's logo picture shape is present at the same position/size, but its image content is
       a blank/neutral placeholder, not the Intermarché logo
-- [ ] Slide 2 (conclusion) is untouched at this stage — text/values still the template's own
+- [x] Slide 2 (conclusion) is untouched at this stage — text/values still the template's own
       example content (that gets replaced at runtime, not here)
 
 **Verification:**
-- [ ] Manual check: open the resulting pptx (or convert via the existing LibreOffice preview
-      pipeline) and visually confirm the logo is gone/blank and nothing else moved
-- [ ] `git status` shows only the new asset file added under `assets/templates/`
+- [x] Manual check: converted via the existing LibreOffice preview pipeline and visually confirmed
+      the logo is now a "LOGO CLIENT" placeholder, nothing else moved
+- [x] `git status` shows only the new asset file added under `assets/templates/`
 
 **Dependencies:** None
 
@@ -100,24 +100,24 @@ assumption). Needs to, for the one slide being grafted:
   templates — skip font handling entirely for this utility, out of scope).
 
 **Acceptance criteria:**
-- [ ] Grafting slide 1 of `assets/templates/template-intro-conclusion.pptx` into a fresh copy of
+- [x] Grafting slide 1 of `assets/templates/template-intro-conclusion.pptx` into a fresh copy of
       `assets/templates/template-sans-stockage.pptx` with `position: "prepend"` produces a pptx
       with the cover slide as the new first slide, all 2 original slides still present afterward,
       unmodified
-- [ ] The grafted layout/master resources are present under names that don't collide with the
+- [x] The grafted layout/master resources are present under names that don't collide with the
       target's existing `slideLayoutN.xml`/`slideMasterN.xml`
-- [ ] `[Content_Types].xml`, `presentation.xml`, and `presentation.xml.rels` are all internally
+- [x] `[Content_Types].xml`, `presentation.xml`, and `presentation.xml.rels` are all internally
       consistent (every referenced part exists, every part is referenced)
-- [ ] `appendSlides`' existing behavior (used by `buildComparaisonPptx`) is unaffected — its
+- [x] `appendSlides`' existing behavior (used by `buildComparaisonPptx`) is unaffected — its
       existing tests still pass unmodified
 
 **Verification:**
-- [ ] Tests pass: new test file (e.g. `tests/pptx/graftSlide.test.ts`) covering the round-trip
-      above, plus `npm test -- tests/pptx/mergeSlides.test.ts` (regression check)
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: convert the grafted test-output pptx via the existing LibreOffice preview
-      pipeline (`src/preview/pptxToImages.ts` or a direct `soffice --headless --convert-to png`
-      call) to confirm it's not corrupt and renders visually as expected
+- [x] Tests pass: `tests/pptx/graftSlide.test.ts` (prepend, append, and combined round-trips,
+      plus dangling-reference assertions), `npm test -- tests/pptx/mergeSlides.test.ts` (regression)
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: converted all 3 grafted test-output pptx via the LibreOffice preview pipeline,
+      visually confirmed correct slide order/content in each case (prepend-only, append-only, and
+      both together)
 
 **Dependencies:** None (can be built/tested against Task 2's asset once available, but the utility
 itself doesn't depend on Task 2 being done first)
@@ -133,10 +133,10 @@ early)
 ---
 
 ### Checkpoint: Phase 2
-- [ ] `npm test` passes, including the new `graftSlide` round-trip test
-- [ ] A manually-grafted test pptx (cover prepended into a copy of `template-sans-stockage.pptx`)
+- [x] `npm test` passes, including the new `graftSlide` round-trip test
+- [x] A manually-grafted test pptx (cover prepended into a copy of `template-sans-stockage.pptx`)
       opens cleanly via LibreOffice
-- [ ] No changes to `appendSlides`' existing behavior/tests
+- [x] No changes to `appendSlides`' existing behavior/tests
 
 ---
 

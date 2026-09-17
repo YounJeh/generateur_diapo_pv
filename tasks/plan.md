@@ -87,19 +87,19 @@ Slides export — different slideMaster/slideLayouts than `assets/templates/*.pp
 ## Task List
 
 ### Phase 1: Chart readability (independent, no dependencies on the rest)
-- [ ] Task 1: Scale up chart text + bar thickness in `annualResultsChart.ts`
+- [x] Task 1: Scale up chart text + bar thickness in `annualResultsChart.ts`
 
 ### Checkpoint: Phase 1
-- [ ] `npm test` passes (tests/chart/annualResultsChart.test.ts, annualResultsChartStorage.test.ts)
-- [ ] Visual check: render both variants, confirm no overlap, text/bars visibly larger
+- [x] `npm test` passes (tests/chart/annualResultsChart.test.ts, annualResultsChartStorage.test.ts)
+- [x] Visual check: render both variants, confirm no overlap, text/bars visibly larger
 
 ### Phase 2: Foundation for slide grafting
-- [ ] Task 2: Promote + anonymize the intro/conclusion asset
-- [ ] Task 3: `graftSlide` cross-deck merge utility (slide + layout + master + media, prepend/append)
+- [x] Task 2: Promote + anonymize the intro/conclusion asset
+- [x] Task 3: `graftSlide` cross-deck merge utility (slide + layout + master + media, prepend/append)
 
 ### Checkpoint: Phase 2
-- [ ] `graftSlide` round-trip test passes (grafted pptx is well-formed, opens cleanly)
-- [ ] `npm test` still passes (no regression to `appendSlides`' existing comparaison use case)
+- [x] `graftSlide` round-trip test passes (grafted pptx is well-formed, opens cleanly)
+- [x] `npm test` still passes (no regression to `appendSlides`' existing comparaison use case)
 
 ### Phase 3: Cover + conclusion slide builders
 - [ ] Task 4: `addCoverSlide(zip)` using Task 2 + Task 3
