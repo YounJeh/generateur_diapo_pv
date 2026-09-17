@@ -240,18 +240,21 @@ function drawChart(rows: [Row, Row], frameRatio: number): Buffer {
   const maxTotal = Math.max(rows[0].total, rows[1].total);
 
   // Texte et épaisseur de barre agrandis par rapport à la version d'origine
-  // (barH 24->42, fonts +20 à +75% selon l'élément) — plafonné en dessous
-  // d'un x2 strict par le cadre-image fixe (voir replaceChartImage) qui ne
-  // laisse pas assez de hauteur pour un x2 complet sans chevauchement,
-  // notamment sur la variante 3 segments (avec stockage). marginX/barMaxW/
+  // (barH 24->64, fonts +20 à +75% selon l'élément) — marginX/barMaxW/
   // legendX inchangés : la longueur des barres et la largeur du cadre-image
   // ne bougent pas, seule la présentation grossit. labelW élargi pour
-  // laisser la place au plus gros nombre total.
+  // laisser la place au plus gros nombre total. Le label/nombre (colonne
+  // marginX..barX) et la légende (colonne legendX..fin) sont dans des
+  // colonnes distinctes de celle de la barre (barX..barX+barMaxW) : épaissir
+  // la barre ne les fait pas se chevaucher. Seul le bas de la barre de la
+  // ligne 2 (Consommation) doit rester au-dessus de la note en italique
+  // (même colonne) — c'est elle qui borne réellement barH, pas les autres
+  // éléments.
   const marginX = 64;
   const labelW = 340;
   const barX = marginX + labelW;
   const barMaxW = 1150;
-  const barH = 42;
+  const barH = 64;
   const gap = 4;
   const legendX = barX + barMaxW + 70;
   const rowY = [175, 365];
@@ -277,13 +280,13 @@ function drawChart(rows: [Row, Row], frameRatio: number): Buffer {
     row.segments.forEach((seg, si) => {
       const segW = (barW - gap) * (seg.pct / 100) - (si === 0 ? gap / 2 : 0);
       ctx.fillStyle = seg.color;
-      roundedRect(ctx, cx, y - barH / 2, segW, barH, 7);
+      roundedRect(ctx, cx, y - barH / 2, segW, barH, 10);
 
-      if (segW > 90) {
+      if (segW > 110) {
         ctx.fillStyle = "#ffffff";
-        ctx.font = `600 18px ${CHART_FONT_FAMILY}`;
+        ctx.font = `700 26px ${CHART_FONT_FAMILY}`;
         ctx.textAlign = "left";
-        ctx.fillText(`${seg.pct}%`, cx + 14, y + 6);
+        ctx.fillText(`${seg.pct}%`, cx + 16, y + 9);
       }
       cx += segW + gap;
     });
@@ -312,7 +315,7 @@ function drawChart(rows: [Row, Row], frameRatio: number): Buffer {
   ctx.fillText(
     `Longueur des barres proportionnelle au total MWh (Consommation ≈ ${(rows[1].total / rows[0].total).toFixed(1)}× Production).`,
     barX,
-    rowY[1] + 66,
+    rowY[1] + 80,
   );
 
   return canvas.toBuffer("image/png");
