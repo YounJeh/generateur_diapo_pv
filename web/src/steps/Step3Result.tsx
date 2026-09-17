@@ -1,4 +1,6 @@
+import { useState } from "react";
 import type { GenerateResponse } from "../api/types";
+import { SlideLightbox } from "../components/SlideLightbox";
 
 interface Props {
   result: GenerateResponse;
@@ -6,6 +8,8 @@ interface Props {
 }
 
 export function Step3Result({ result, onStartOver }: Props) {
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
   return (
     <div>
       <section className="section">
@@ -16,7 +20,14 @@ export function Step3Result({ result, onStartOver }: Props) {
           <div className="preview-grid">
             {result.previewImageUrls.map((url, index) => (
               <div key={url}>
-                <img src={url} alt={`Diapositive ${index + 1}`} />
+                <button
+                  type="button"
+                  className="preview-thumb"
+                  onClick={() => setOpenIndex(index)}
+                  aria-label={`Agrandir la diapositive ${index + 1}`}
+                >
+                  <img src={url} alt={`Diapositive ${index + 1}`} />
+                </button>
                 <p className="preview-caption">Diapositive {index + 1}</p>
               </div>
             ))}
@@ -25,6 +36,14 @@ export function Step3Result({ result, onStartOver }: Props) {
           <p className="actionbar-note">
             Aperçu indisponible pour cette génération — le fichier reste téléchargeable.
           </p>
+        )}
+
+        {openIndex !== null && (
+          <SlideLightbox
+            imageUrls={result.previewImageUrls}
+            startIndex={openIndex}
+            onClose={() => setOpenIndex(null)}
+          />
         )}
       </section>
 
