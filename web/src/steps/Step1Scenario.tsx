@@ -5,7 +5,7 @@ import { GroupList } from "../components/GroupList";
 import { RowsStepper } from "../components/RowsStepper";
 import { ScenarioCard } from "../components/ScenarioCard";
 import { UploadField } from "../components/UploadField";
-import { buildExtractFormData, createGroupe, isFormValid, type FormState } from "../state/formState";
+import { createGroupe, isFormValid, type FormState } from "../state/formState";
 
 interface Props {
   form: FormState;
@@ -35,7 +35,7 @@ export function Step1Scenario({ form, onChange, onExtracted }: Props) {
     setError(null);
     setLoading(true);
     try {
-      const result = await extractValues(buildExtractFormData(form));
+      const result = await extractValues(form);
       onExtracted(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -103,7 +103,7 @@ export function Step1Scenario({ form, onChange, onExtracted }: Props) {
       </section>
 
       <div className="actionbar">
-        <span className="actionbar-note">Vos fichiers restent sur votre appareil</span>
+        <span className="actionbar-note">Vos fichiers ne sont accessibles qu'à vous, le temps de la génération</span>
         <button
           type="button"
           className="btn btn-primary"
