@@ -63,6 +63,11 @@ export interface ComparaisonResult {
 export function deriveConclusionScenarios(groupes: GroupeResult[]): ConclusionScenario[] {
   return groupes.map((groupe) => {
     const preferredCase = groupe.cases[groupe.cases.length - 1];
+    if (!preferredCase) {
+      throw new Error(
+        `Groupe ${groupe.scenarioNumero} sans aucun cas (ni sans-stockage, ni avec-stockage) : impossible de dériver son scénario de conclusion.`,
+      );
+    }
     return toConclusionScenario(groupe.scenarioNumero, preferredCase.values);
   });
 }

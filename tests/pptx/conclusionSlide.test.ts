@@ -154,4 +154,20 @@ describe("addConclusionSlide", () => {
       "<a:t>Les solutions présentées sont pertinentes au vu des résultats. </a:t>",
     );
   });
+
+  it("rejects an unsupported scenario count instead of silently degrading the layout", () => {
+    mkdirSync(OUTPUT_DIR, { recursive: true });
+    const zip = openPptx(SANS_STOCKAGE_FIXTURE);
+    expect(() => addConclusionSlide(zip, [])).toThrow(/1 à 3/);
+
+    const fourScenarios: ConclusionScenario[] = Array.from({ length: 4 }, (_, i) => ({
+      scenarioNumero: i + 1,
+      avecStockage: false,
+      autoconsommationDisplay: "60",
+      besoinsPct: 45,
+    }));
+    expect(() => addConclusionSlide(openPptx(SANS_STOCKAGE_FIXTURE), fourScenarios)).toThrow(
+      /1 à 3/,
+    );
+  });
 });

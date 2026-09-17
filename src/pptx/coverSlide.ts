@@ -1,7 +1,8 @@
 import { graftSlide } from "./graftSlide.js";
 import { openPptx, type Pptx } from "./zip.js";
 
-const INTRO_CONCLUSION_TEMPLATE = "assets/templates/template-intro-conclusion.pptx";
+/** Asset source des slides de couverture (slide 1) et de conclusion (slide 2, voir conclusionSlide.ts). */
+export const INTRO_CONCLUSION_TEMPLATE = "assets/templates/template-intro-conclusion.pptx";
 const COVER_SLIDE_NUMBER = 1;
 
 /**

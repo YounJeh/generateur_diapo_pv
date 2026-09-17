@@ -239,11 +239,14 @@ function drawChart(rows: [Row, Row], frameRatio: number): Buffer {
 
   const maxTotal = Math.max(rows[0].total, rows[1].total);
 
-  // Taille de texte et épaisseur de barre doublées par rapport à la version
-  // d'origine (marginX/barMaxW/legendX inchangés : c'est la longueur des
-  // barres et la largeur du cadre-image qui ne bougent pas, seule la
-  // présentation grossit) — cadre-image fixe (voir replaceChartImage),
-  // labelW élargi pour laisser la place au plus gros nombre total.
+  // Texte et épaisseur de barre agrandis par rapport à la version d'origine
+  // (barH 24->42, fonts +20 à +75% selon l'élément) — plafonné en dessous
+  // d'un x2 strict par le cadre-image fixe (voir replaceChartImage) qui ne
+  // laisse pas assez de hauteur pour un x2 complet sans chevauchement,
+  // notamment sur la variante 3 segments (avec stockage). marginX/barMaxW/
+  // legendX inchangés : la longueur des barres et la largeur du cadre-image
+  // ne bougent pas, seule la présentation grossit. labelW élargi pour
+  // laisser la place au plus gros nombre total.
   const marginX = 64;
   const labelW = 340;
   const barX = marginX + labelW;

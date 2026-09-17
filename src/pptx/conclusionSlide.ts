@@ -1,8 +1,8 @@
+import { INTRO_CONCLUSION_TEMPLATE } from "./coverSlide.js";
 import { graftSlide } from "./graftSlide.js";
 import type { SlideValues, StorageSlideValues } from "../types.js";
 import { getEntryText, openPptx, setEntryText, type Pptx } from "./zip.js";
 
-const INTRO_CONCLUSION_TEMPLATE = "assets/templates/template-intro-conclusion.pptx";
 const CONCLUSION_SLIDE_NUMBER = 2;
 
 // Enveloppe de contenu commune aux blocs "Scénario N" et à la bannière de
@@ -40,6 +40,8 @@ interface BlockRect {
   width: number;
 }
 
+const MAX_SUPPORTED_SCENARIOS = 3;
+
 /**
  * Largeur/position de chaque bloc "Scénario N", N=1..3, dans l'enveloppe de
  * contenu commune (marge 685800, largeur totale 10820400) avec le même
@@ -47,8 +49,19 @@ interface BlockRect {
  * dernier bloc absorbe le reste exact (arrondi EMU) plutôt que de répéter
  * la largeur arrondie, pour que la somme largeurs+espaces colle pile à
  * CONTENT_WIDTH (pas d'écart visible au bord droit).
+ *
+ * N'est vérifié/dimensionné que pour 1 à 3 scénarios (aucune limite au-delà
+ * n'est imposée côté CLI/web) ; au-delà, la mise en page dégraderait
+ * silencieusement (blocs trop étroits) plutôt que d'échouer proprement — on
+ * préfère une erreur explicite, cohérente avec le reste du module (voir
+ * `extractShapeContaining`).
  */
 function computeBlockRects(count: number): BlockRect[] {
+  if (count < 1 || count > MAX_SUPPORTED_SCENARIOS) {
+    throw new Error(
+      `Nombre de scénarios non pris en charge par la slide de conclusion : ${count} (1 à ${MAX_SUPPORTED_SCENARIOS} attendu).`,
+    );
+  }
   if (count === 1) {
     return [{ x: CONTENT_MARGIN_X, width: CONTENT_WIDTH }];
   }
