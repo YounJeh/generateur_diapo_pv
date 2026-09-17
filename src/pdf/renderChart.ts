@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { createCanvas } from "canvas";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import type { PDFPageProxy } from "pdfjs-dist";
+import "./pdfjsSetup.js";
 import { ensureChartFontsRegistered } from "../chart/fonts.js";
 import {
   NodeCanvasFactory,

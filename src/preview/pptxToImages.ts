@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
+import "../pdf/pdfjsSetup.js";
 import { ensureChartFontsRegistered } from "../chart/fonts.js";
 import {
   NodeCanvasFactory,
