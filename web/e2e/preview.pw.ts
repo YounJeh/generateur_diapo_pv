@@ -94,6 +94,20 @@ test('releases local images when starting over and fits a mobile screen', async 
   await page.getByRole('button', { name: 'Agrandir la diapositive 2', exact: true }).click();
   const bounds = await page.getByRole('dialog').boundingBox();
   expect(bounds!.width).toBeLessThanOrEqual(390);
+  for (const viewport of [{ width: 320, height: 640 }, { width: 390, height: 844 }, { width: 844, height: 390 }]) {
+    await page.setViewportSize(viewport);
+    for (const name of ['Diapositive précédente', 'Diapositive suivante']) {
+      await expect.poll(async () => {
+        const button = await page.getByRole('button', { name }).boundingBox();
+        return Boolean(button && button.x >= 0 && button.y >= 0
+          && button.x + button.width <= viewport.width && button.y + button.height <= viewport.height);
+      }, { message: `${name} fits the ${viewport.width} × ${viewport.height} screen` }).toBe(true);
+    }
+    await page.getByRole('button', { name: 'Diapositive suivante' }).click();
+    await expect(page.getByRole('dialog')).toHaveAttribute('aria-label', 'Diapositive 3 sur 5, agrandie');
+    await page.getByRole('button', { name: 'Diapositive précédente' }).click();
+    await expect(page.getByRole('dialog')).toHaveAttribute('aria-label', 'Diapositive 2 sur 5, agrandie');
+  }
   await page.getByRole('button', { name: "Fermer l'aperçu" }).click();
   await page.getByRole('button', { name: 'Nouvelle présentation' }).click();
   await expect(page.getByRole('button', { name: /Agrandir/ })).toHaveCount(0);
