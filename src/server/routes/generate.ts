@@ -1,13 +1,11 @@
 import { Router } from "express";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { put } from "@vercel/blob";
 import { buildComparaisonPptx } from "../../generate/comparaison.js";
 import { extractSansStockage, extractStockage } from "../../generate/extract.js";
 import { renderSansStockageStandalone, renderStockageStandalone } from "../../generate/render.js";
 import type { Groupe } from "../../generate/types.js";
 import type { Pptx } from "../../pptx/zip.js";
-import { convertPptxToPngs } from "../../preview/pptxToImages.js";
 import { writePptx } from "../../pptx/zip.js";
 import {
   createScratchDir,
@@ -49,21 +47,8 @@ generateRouter.post("/generate/:sessionId", async (req, res, next) => {
     await uploadOutputPptx(sessionId, pptxBuffer);
     const pptxUrl = await presignDownloadUrl(outputPptxDownloadPathname(sessionId));
 
-    // L'aperçu est un bonus, pas un prérequis : si LibreOffice échoue
-    // (absent, comme c'est le cas sur Vercel — mal configuré...), le pptx
-    // reste téléchargeable.
-    let previewImageUrls: string[] = [];
-    try {
-      previewImageUrls = await buildPreviewImageUrls(localPptxPath, scratchDir, sessionId);
-    } catch (error) {
-      console.warn(
-        `Aperçu indisponible pour la session ${sessionId} : ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
-    }
-
-    res.json({ pptxUrl, previewImageUrls });
+    // Les anciens clients attendent ce champ ; le nouvel aperçu est rendu dans le navigateur.
+    res.json({ pptxUrl, previewImageUrls: [] });
   } catch (error) {
     next(error);
   } finally {
@@ -107,26 +92,4 @@ async function buildZip(manifest: SessionManifest, scratchDir: string): Promise<
   return (
     await renderStockageStandalone(pdfPath, await extractStockage(pdfPath, manifest.rangees))
   ).zip;
-}
-
-async function buildPreviewImageUrls(
-  localPptxPath: string,
-  scratchDir: string,
-  sessionId: string,
-): Promise<string[]> {
-  const previewDir = path.join(scratchDir, "preview");
-  const pngPaths = await convertPptxToPngs(localPptxPath, previewDir);
-
-  return Promise.all(
-    pngPaths.map(async (pngPath, index) => {
-      const pathname = `sessions/${sessionId}/preview/${index}.png`;
-      await put(pathname, await readFile(pngPath), {
-        access: "private",
-        addRandomSuffix: false,
-        allowOverwrite: true,
-        contentType: "image/png",
-      });
-      return presignDownloadUrl(pathname);
-    }),
-  );
 }

@@ -38,7 +38,7 @@ export function createApp(): express.Express {
   app.use("/api", extractRouter);
   app.use("/api", generateRouter);
 
-  // Les PDF sources, le pptx généré et les images d'aperçu vivent tous dans
+  // Les PDF sources et le pptx généré vivent dans
   // Vercel Blob (voir sessions.ts) : le client y accède via des URLs signées
   // à durée de vie limitée, jamais via une route statique de ce serveur.
 

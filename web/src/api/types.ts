@@ -44,7 +44,6 @@ export type ExtractResponse =
 
 export interface GenerateResponse {
   pptxUrl: string;
-  previewImageUrls: string[];
 }
 
 export interface ApiErrorBody {

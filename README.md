@@ -26,16 +26,12 @@ npm --prefix web install
 npm run build
 ```
 
-L'aperçu du pptx généré dans l'interface web nécessite LibreOffice Impress
-(conversion pptx → images). Sur Debian/Ubuntu :
-
-```bash
-sudo apt-get install --no-install-recommends libreoffice-impress
-```
-
-Sans LibreOffice, le reste de l'application (extraction, génération,
-téléchargement du pptx) fonctionne normalement — seul l'aperçu visuel est
-indisponible.
+L’aperçu web fonctionne en local et sur Vercel sans LibreOffice ni service de
+conversion. Le navigateur lit les éléments utilisés par les templates PVstudio
+dans le PPTX final : textes en HTML/CSS avec Barlow, formes, photos et graphiques
+PNG. Il respecte l’ordre des slides, y compris la couverture et la conclusion.
+La mise en page peut varier légèrement dans PowerPoint ; cet aperçu ne constitue
+pas un moteur de rendu universel pour des PPTX externes.
 
 ## Interface web
 
@@ -64,8 +60,8 @@ Le flux en 3 étapes :
    dimensionnement s'ajoutent dynamiquement ("+ Ajouter un groupe").
 2. **Vérifier les données** : les valeurs extraites/calculées sont affichées
    en lecture seule avant de générer le pptx.
-3. **Télécharger** : aperçu visuel de chaque diapositive générée (rendu
-   fidèle via LibreOffice), puis téléchargement du fichier `.pptx`.
+3. **Télécharger** : téléchargement disponible dès la génération, puis aperçu
+   HTML de chaque diapositive, avec agrandissement, navigation et zoom.
 
 Les templates pptx (`assets/templates/`) sont sélectionnés automatiquement
 selon le scénario — rien à uploader de ce côté. L’interface web envoie les
@@ -245,15 +241,24 @@ reste proportionnelle aux MWh — ce n'est pas un réglage de taille).
 ## Développement
 
 ```bash
-npm test              # vitest, contre les fixtures réelles de test/data/ (backend uniquement)
+npm test              # vitest, backend et lecture des aperçus avec les fixtures réelles
 npm run build          # build backend (dist/) + frontend (web/dist/)
 npm run build:server   # build backend seul
 ```
 
 - Backend (CLI + serveur Express) : `src/` — `src/generate/` (extraction/rendu
-  partagés CLI + API), `src/server/` (API), `src/preview/` (aperçu pptx→images).
-- Frontend : `web/` (Vite + React + TS), projet indépendant avec son propre
-  `package.json`.
+  partagés CLI + API), `src/server/` (API), `src/preview/` (convertisseur
+  LibreOffice disponible pour un usage local).
+- Frontend : `web/` (Vite + React + TS), avec son propre `package.json`.
+  `web/src/preview/` lit les templates pour l’aperçu HTML.
 
 Voir `tasks/plan.md` et `tasks/todo.md` pour le détail de l'architecture et
 des décisions prises pendant la conception.
+
+Les tests d’aperçu dans Chromium couvrent les trois scénarios, la navigation,
+le zoom, le mobile, les erreurs de téléchargement et la libération des images :
+
+```bash
+npm exec --prefix web -- playwright install chromium
+npm run test:preview --prefix web
+```
