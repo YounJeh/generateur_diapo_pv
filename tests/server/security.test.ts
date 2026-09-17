@@ -41,9 +41,12 @@ describe("sécurité : entrées non fiables rejetées avant d'atteindre le stock
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        sessionId,
         type: "blob.generate-client-token",
-        payload: { pathname: `sessions/${otherSessionId}/uploads/pdf.pdf`, multipart: false, clientPayload: null },
+        payload: {
+          pathname: `sessions/${otherSessionId}/uploads/pdf.pdf`,
+          multipart: false,
+          clientPayload: sessionId,
+        },
       }),
     });
 

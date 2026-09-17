@@ -8,25 +8,19 @@ export const blobUploadTokenRouter = Router();
 
 /**
  * Autorise un upload direct navigateur → Vercel Blob (contourne la limite de
- * 4,5 Mo par requête des fonctions serverless Vercel). Le client doit fournir
- * son propre `sessionId` (généré côté client) et ne peut obtenir un token que
- * pour un pathname `sessions/<sessionId>/uploads/<champ>.pdf` correspondant.
+ * 4,5 Mo par requête des fonctions serverless Vercel). Le client transmet son
+ * propre `sessionId` (généré côté client) via `clientPayload` — le seul
+ * canal disponible pour des données additionnelles dans le protocole
+ * `upload()` de `@vercel/blob/client` — et ne peut obtenir un token que pour
+ * un pathname `sessions/<sessionId>/uploads/<champ>.pdf` correspondant.
  */
 blobUploadTokenRouter.post("/blob/upload-token", async (req, res) => {
-  const sessionId = req.body?.sessionId as string | undefined;
-
   try {
-    if (typeof sessionId !== "string" || sessionId.length === 0) {
-      throw new Error("sessionId manquant.");
-    }
-
-    // Valider le pathname avant d'appeler `handleUpload` (qui exige
-    // `BLOB_READ_WRITE_TOKEN`) : une valeur non autorisée est rejetée sans
-    // toucher au stockage Blob.
     const body = req.body as HandleUploadBody;
     if (body?.type === "blob.generate-client-token") {
+      const sessionId = body.payload.clientPayload;
       const { pathname } = body.payload;
-      if (!isUploadPathnameFor(sessionId, pathname)) {
+      if (typeof sessionId !== "string" || !isUploadPathnameFor(sessionId, pathname)) {
         throw new Error(`Chemin d'upload non autorisé : "${pathname}".`);
       }
     }
@@ -34,8 +28,8 @@ blobUploadTokenRouter.post("/blob/upload-token", async (req, res) => {
     const result = await handleUpload({
       body,
       request: req,
-      onBeforeGenerateToken: async (pathname) => {
-        if (!isUploadPathnameFor(sessionId, pathname)) {
+      onBeforeGenerateToken: async (pathname, clientPayload) => {
+        if (typeof clientPayload !== "string" || !isUploadPathnameFor(clientPayload, pathname)) {
           throw new Error(`Chemin d'upload non autorisé : "${pathname}".`);
         }
         return {
