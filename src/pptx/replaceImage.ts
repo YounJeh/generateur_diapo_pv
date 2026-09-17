@@ -1,4 +1,4 @@
-import { loadImage } from "canvas";
+import { loadImage } from "@napi-rs/canvas";
 import { getEntryText, setEntryBuffer, setEntryText, type Pptx } from "./zip.js";
 
 const DEFAULT_IMAGE_ENTRY = "ppt/media/image8.png";

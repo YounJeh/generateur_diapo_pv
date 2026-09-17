@@ -1,26 +1,16 @@
 import { readFile } from "node:fs/promises";
-import { createCanvas } from "canvas";
+import { createCanvas } from "@napi-rs/canvas";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import type { PDFPageProxy } from "pdfjs-dist";
 import "./pdfjsSetup.js";
 import { ensureChartFontsRegistered } from "../chart/fonts.js";
-import {
-  NodeCanvasFactory,
-  captureGlyphPaints,
-  drawTextItems,
-  tolerateBrokenPatternTransform,
-  type Matrix,
-} from "./nodeCanvasText.js";
+import { NodeCanvasFactory } from "./nodeCanvasText.js";
 import type { Bounds } from "./monthlyEnergyChartBounds.js";
-
-export { findItemColor } from "./nodeCanvasText.js";
-export type { GlyphPaint } from "./nodeCanvasText.js";
 
 const RENDER_SCALE = 3;
 
 /**
- * Rend une page de PDF en raster haute résolution (graphiques + texte
- * redessiné) puis rogne selon `bounds` (calculées par
+ * Rend une page de PDF en raster haute résolution (graphiques et polices intégrées) puis rogne selon `bounds` (calculées par
  * findMonthlyEnergyChartBounds, en points PDF). Retourne un PNG.
  */
 export async function renderChartImage(
@@ -44,10 +34,7 @@ export async function renderChartImage(
     viewport.height,
   );
 
-  const glyphPaints = captureGlyphPaints(context);
-  tolerateBrokenPatternTransform(context);
   await page.render({ canvasContext: context, viewport }).promise;
-  await drawTextItems(context, page, viewport.transform as Matrix, glyphPaints);
 
   const pageHeightPt = page.getViewport({ scale: 1 }).height;
   const cropXLeft = Math.round(bounds.x0 * RENDER_SCALE);

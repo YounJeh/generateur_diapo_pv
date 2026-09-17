@@ -6,13 +6,7 @@ import { promisify } from "node:util";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import "../pdf/pdfjsSetup.js";
 import { ensureChartFontsRegistered } from "../chart/fonts.js";
-import {
-  NodeCanvasFactory,
-  captureGlyphPaints,
-  drawTextItems,
-  tolerateBrokenPatternTransform,
-  type Matrix,
-} from "../pdf/nodeCanvasText.js";
+import { NodeCanvasFactory } from "../pdf/nodeCanvasText.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -43,10 +37,8 @@ async function convertPptxToPdf(pptxPath: string, outDir: string): Promise<strin
  * tasks/plan.md pour le design retenu après test empirique : la
  * réutilisation d'un process soffice déjà démarré ne réduit pas la latence
  * de façon fiable via l'invocation CLI `--convert-to`), puis rastérise
- * chaque page du pdf obtenu en Node via pdfjs-dist/canvas, en réutilisant le
- * contournement de rendu de texte de `nodeCanvasText.ts` : sans lui, le
- * texte du pdf exporté par LibreOffice ressort invisible sous Node (même
- * bug que pour les PDF SolarEdge rendus dans `renderChart.ts`).
+ * chaque page du PDF obtenu avec PDF.js et @napi-rs/canvas, qui rend
+ * directement les polices intégrées.
  */
 export async function convertPptxToPngs(pptxPath: string, outDir: string): Promise<string[]> {
   ensureChartFontsRegistered();
@@ -70,10 +62,7 @@ export async function convertPptxToPngs(pptxPath: string, outDir: string): Promi
       const viewport = page.getViewport({ scale: RENDER_SCALE });
       const { canvas, context } = canvasFactory.create(viewport.width, viewport.height);
 
-      const glyphPaints = captureGlyphPaints(context);
-      tolerateBrokenPatternTransform(context);
       await page.render({ canvasContext: context, viewport }).promise;
-      await drawTextItems(context, page, viewport.transform as Matrix, glyphPaints);
 
       const pngPath = path.join(outDir, `slide-${pageNumber}.png`);
       await writeFile(pngPath, canvas.toBuffer("image/png"));

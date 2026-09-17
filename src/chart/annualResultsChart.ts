@@ -1,4 +1,4 @@
-import { createCanvas } from "canvas";
+import { createCanvas } from "@napi-rs/canvas";
 import { CHART_FONT_FAMILY, ensureChartFontsRegistered } from "./fonts.js";
 import type { ExtractedValues, StorageExtractedValues } from "../types.js";
 
@@ -198,7 +198,7 @@ function buildStorageRows(values: StorageAnnualResultsChartValues): [Row, Row] {
 }
 
 function roundedRect(
-  ctx: import("canvas").CanvasRenderingContext2D,
+  ctx: import("@napi-rs/canvas").SKRSContext2D,
   x: number,
   y: number,
   w: number,
