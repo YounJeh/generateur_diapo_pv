@@ -16,6 +16,10 @@ voir ci-dessous) ou la **ligne de commande** directement.
 
 ## Installation
 
+Node.js **24.x** est requis (`nvm use` si vous utilisez nvm). Le rendu des
+graphiques et des PDF utilise `@napi-rs/canvas`, avec des binaires précompilés
+sans dépendances système Cairo/Pango.
+
 ```bash
 npm install
 npm --prefix web install
@@ -69,6 +73,13 @@ rapports et les fichiers générés dans un store Vercel Blob privé, y compris
 en développement local. La CLI traite les fichiers localement.
 
 ## Configuration du serveur et de Vercel
+
+`engines.node` dans `package.json` fixe Node.js **24.x** pour les prochains
+déploiements, même si le projet Vercel était configuré en Node 20. Conserver
+l’installation des dépendances optionnelles : elles fournissent le binaire
+natif de `@napi-rs/canvas` adapté à la plateforme. PDF.js et l’application
+doivent utiliser la même branche `0.1.x` de canvas (vérifiable avec
+`npm ls @napi-rs/canvas`) pour partager des objets `Path2D` compatibles.
 
 Renseigner les variables de `.env.example` dans l’environnement du serveur
 (`tsx`/`node` ne chargent pas automatiquement ce fichier) ou dans les paramètres
