@@ -21,6 +21,13 @@ export function SlidePreview({ slide, label }: { slide: PreviewSlide; label: str
         {slide.elements.map((element, index) => (
           <div key={index} style={element.style}>
             {element.image && <img src={element.image.src} style={element.image.style} alt="" draggable={false} />}
+            {element.paragraphs?.map((paragraph, paragraphIndex) => (
+              <p key={paragraphIndex} style={paragraph.style}>
+                {paragraph.bullet && <span style={{ display: "inline-block", textIndent: 0,
+                  width: Math.max(0, -Number(paragraph.style.textIndent ?? 0)) || undefined }}>{paragraph.bullet} </span>}
+                {paragraph.runs.map((run, runIndex) => <span key={runIndex} style={run.style}>{run.text}</span>)}
+              </p>
+            ))}
           </div>
         ))}
       </div>

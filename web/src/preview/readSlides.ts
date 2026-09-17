@@ -1,5 +1,6 @@
 import type { PreviewElement, PresentationPreview } from "./types";
 import { child, children, descendant, emuToPx, number, openPresentation } from "./xml";
+import { readText } from "./readText";
 
 /** Rendu des éléments employés par les templates PVstudio, sans moteur Office. */
 export function readSlides(buffer: ArrayBuffer): PresentationPreview {
@@ -10,7 +11,7 @@ export function readSlides(buffer: ArrayBuffer): PresentationPreview {
     const width = emuToPx(number(size, "cx"));
     const height = emuToPx(number(size, "cy"));
     const slideRels = archive.relationships("ppt/presentation.xml");
-    const slides = children(child(presentation, "sldIdLst"), "sldId").map((id) => {
+    const slides = children(child(presentation, "sldIdLst"), "sldId").map((id, index) => {
       const slidePath = slideRels.find((rel) => rel.id === id.getAttribute("r:id"))?.path;
       if (!slidePath) throw new Error("Ordre des diapositives illisible.");
       const slide = archive.xml(slidePath);
@@ -38,11 +39,33 @@ export function readSlides(buffer: ArrayBuffer): PresentationPreview {
         if (!part || !path) continue;
         const rels = archive.relationships(path);
         for (const shape of Array.from(child(child(part, "cSld"), "spTree")?.children ?? [])) {
-          if (shape.localName !== "pic") continue;
+          if (part !== slide && descendant(shape, "ph")) continue;
+          if (!["pic", "sp", "cxnSp"].includes(shape.localName)) continue;
           const props = child(shape, "spPr");
           const transform = child(props, "xfrm");
           const off = child(transform, "off"), ext = child(transform, "ext");
           const w = emuToPx(number(ext, "cx")), h = emuToPx(number(ext, "cy"));
+          if (shape.localName !== "pic") {
+            const text = readText(shape, layout, master, color, index + 1);
+            const hasText = text.paragraphs?.some((p) => p.runs.some((r) => r.text.trim()));
+            const line = child(props, "ln");
+            const stroke = color(child(line, "solidFill"));
+            const geometry = child(props, "prstGeom");
+            const rounded = geometry?.getAttribute("prst") === "roundRect";
+            const adjustment = child(child(geometry, "avLst"), "gd")?.getAttribute("fmla")?.split(" ").at(-1);
+            const connector = shape.localName === "cxnSp";
+            elements.push({
+              style: { position: "absolute", left: emuToPx(number(off, "x")), top: emuToPx(number(off, "y")),
+                width: connector ? Math.max(w, emuToPx(number(line, "w", 12700))) : w,
+                height: connector ? Math.max(h, emuToPx(number(line, "w", 12700))) : h,
+                background: connector ? stroke : color(child(props, "solidFill")),
+                border: !connector && stroke !== "transparent" ? `${emuToPx(number(line, "w", 12700))}px solid ${stroke}` : undefined,
+                borderRadius: rounded ? Math.min(w, h) * Number(adjustment ?? 16667) / 100000 : 0,
+                ...(hasText ? text.bodyStyle : {}) },
+              paragraphs: hasText ? text.paragraphs : undefined,
+            });
+            continue;
+          }
           const fill = child(shape, "blipFill");
           const imagePath = rels.find((rel) => rel.id === child(fill, "blip")?.getAttribute("r:embed"))?.path;
           if (!imagePath) continue;

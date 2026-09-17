@@ -20,10 +20,14 @@ export function number(node: Element | undefined, name: string, fallback = 0): n
 export function openPresentation(buffer: ArrayBuffer) {
   const files = unzipSync(new Uint8Array(buffer));
   const urls = new Map<string, string>();
+  const documents = new Map<string, Element>();
   function xml(path: string): Element {
+    const existing = documents.get(path);
+    if (existing) return existing;
     if (!files[path]) throw new Error(`Élément de présentation introuvable : ${path}`);
     const doc = new DOMParser().parseFromString(strFromU8(files[path]), "application/xml");
     if (doc.getElementsByTagName("parsererror").length) throw new Error("Présentation illisible.");
+    documents.set(path, doc.documentElement);
     return doc.documentElement;
   }
   function relationships(path: string) {
