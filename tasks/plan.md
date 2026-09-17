@@ -102,31 +102,31 @@ Slides export — different slideMaster/slideLayouts than `assets/templates/*.pp
 - [x] `npm test` still passes (no regression to `appendSlides`' existing comparaison use case)
 
 ### Phase 3: Cover + conclusion slide builders
-- [ ] Task 4: `addCoverSlide(zip)` using Task 2 + Task 3
-- [ ] Task 5: `addConclusionSlide(zip, scenarios)` — block count/positioning
-- [ ] Task 6: Per-block text content + closing banner text rules
+- [x] Task 4: `addCoverSlide(zip)` using Task 2 + Task 3
+- [x] Task 5: `addConclusionSlide(zip, scenarios)` — block count/positioning
+- [x] Task 6: Per-block text content + closing banner text rules
 
 ### Checkpoint: Phase 3
-- [ ] Unit tests pass for cover slide (1 slide added, first in order, rest untouched)
-- [ ] Unit tests pass for conclusion slide at N=1, N=2, N=3 (block count, positions, text)
+- [x] Unit tests pass for cover slide (1 slide added, first in order, rest untouched)
+- [x] Unit tests pass for conclusion slide at N=1, N=2, N=3 (block count, positions, text)
 
 ### Phase 4: Wiring into the real pipelines
-- [ ] Task 7: `finalizePptx` + wire into `render.ts` wrappers, `cli.ts`, `generate.ts`, `comparaison.ts`
+- [x] Task 7: `finalizePptx` + wire into `render.ts` wrappers, `cli.ts`, `generate.ts`, `comparaison.ts`
 
 ### Checkpoint: Phase 4 (end-to-end)
-- [ ] CLI run against `test/data/` fixtures for all 3 scenarios (sans-stockage, stockage,
+- [x] CLI run against `test/data/` fixtures for all 3 scenarios (sans-stockage, stockage,
       comparaison with 1/2/3 groupes) produces a pptx with cover first, conclusion last, correct
       block count/values
-- [ ] Generated pptx opens cleanly via the existing LibreOffice preview pipeline
+- [x] Generated pptx opens cleanly via the existing LibreOffice preview pipeline
       (`src/preview/pptxToImages.ts`) — no corruption
-- [ ] `npm test` and `npm run build` pass
+- [x] `npm test` and `npm run build` pass
 
 ### Phase 5: Docs
-- [ ] Task 8: Update `README.md`
+- [x] Task 8: Update `README.md`
 
 ### Checkpoint: Complete
-- [ ] All acceptance criteria met
-- [ ] Ready for `/code-review-and-quality`
+- [x] All acceptance criteria met
+- [x] Ready for `/code-review-and-quality`
 
 ## Risks and Mitigations
 

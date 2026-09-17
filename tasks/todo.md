@@ -148,14 +148,14 @@ early)
 already the final, anonymized content.
 
 **Acceptance criteria:**
-- [ ] Calling `addCoverSlide(zip)` on a rendered `renderSansStockage`/`renderStockage` result adds
+- [x] Calling `addCoverSlide(zip)` on a rendered `renderSansStockage`/`renderStockage` result adds
       exactly one new slide, first in presentation order, with the anonymized placeholder logo
-- [ ] The zip's original slides (title/details/monthly) are unchanged and still in their original
+- [x] The zip's original slides (title/details/monthly) are unchanged and still in their original
       relative order after the cover
 
 **Verification:**
-- [ ] Tests pass: `tests/pptx/coverSlide.test.ts` (new)
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `tests/pptx/coverSlide.test.ts` (new)
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** Task 2, Task 3
 
@@ -188,18 +188,18 @@ a cross-deck operation, so it doesn't need `graftSlide`. Leave the actual bullet
 positioning/count only; use placeholder/template text for now and let Task 6 replace it.
 
 **Acceptance criteria:**
-- [ ] N=1 produces one full-width block
-- [ ] N=2 produces the template's original two-block layout, unchanged
-- [ ] N=3 produces three equal-width blocks whose widths+gaps sum exactly to 10820400 (no visible
+- [x] N=1 produces one full-width block
+- [x] N=2 produces the template's original two-block layout, unchanged
+- [x] N=3 produces three equal-width blocks whose widths+gaps sum exactly to 10820400 (no visible
       gap or overflow at the right edge)
-- [ ] All blocks share the same `y`/`height` regardless of N
-- [ ] Each block's "Scénario N " label text is renumbered correctly for its position (1-indexed)
+- [x] All blocks share the same `y`/`height` regardless of N
+- [x] Each block's "Scénario N " label text is renumbered correctly for its position (1-indexed)
 
 **Verification:**
-- [ ] Tests pass: `tests/pptx/conclusionSlide.test.ts` (new) — assert shape count and EMU
+- [x] Tests pass: `tests/pptx/conclusionSlide.test.ts` (new) — assert shape count and EMU
       positions for N=1, N=2, N=3
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: convert an N=1 and an N=3 output through the LibreOffice preview pipeline,
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: convert an N=1 and an N=3 output through the LibreOffice preview pipeline,
       visually confirm no overlap/misalignment
 
 **Dependencies:** Task 3 (and Task 2 for the source asset)
@@ -250,24 +250,24 @@ sans-stockage-before-avec-stockage ordering) and in `render.ts`'s single-scenari
 7) that derive a 1-element array from the single `SlideValues`/`StorageSlideValues`.
 
 **Acceptance criteria:**
-- [ ] A storage scenario with `tauxAutoconsommationAffichage === "+95"` renders "Plus de 95 %
+- [x] A storage scenario with `tauxAutoconsommationAffichage === "+95"` renders "Plus de 95 %
       d'autoconsommation ... grâce à l'intégration d'une solution de stockage." — matching the
       template's own example text
-- [ ] A storage scenario with a lower `tauxAutoconsommationAffichage` (e.g. "80") renders "80 %
+- [x] A storage scenario with a lower `tauxAutoconsommationAffichage` (e.g. "80") renders "80 %
       d'autoconsommation ... grâce à l'intégration d'une solution de stockage."
-- [ ] A non-storage scenario renders "{X} % d'autoconsommation ... de la production
+- [x] A non-storage scenario renders "{X} % d'autoconsommation ... de la production
       photovoltaïque."
-- [ ] Both scenario types render "{Y} % des besoins énergétiques du site couverts ... par la
+- [x] Both scenario types render "{Y} % des besoins énergétiques du site couverts ... par la
       production photovoltaïque." with the correct Y (`tauxAutoproduction` or
       `tauxAutoproductionStockage`)
-- [ ] Banner text is singular for N=1, plural for N=2/N=3
-- [ ] `comparaison.ts` picks the avec-stockage case when a groupe has both, sans-stockage when it
+- [x] Banner text is singular for N=1, plural for N=2/N=3
+- [x] `comparaison.ts` picks the avec-stockage case when a groupe has both, sans-stockage when it
       only has that
 
 **Verification:**
-- [ ] Tests pass: extend `tests/pptx/conclusionSlide.test.ts` with text-content assertions for
+- [x] Tests pass: extend `tests/pptx/conclusionSlide.test.ts` with text-content assertions for
       mixed storage/non-storage scenario lists
-- [ ] Build succeeds: `npm run build`
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** Task 5
 
@@ -281,9 +281,9 @@ sans-stockage-before-avec-stockage ordering) and in `render.ts`'s single-scenari
 ---
 
 ### Checkpoint: Phase 3
-- [ ] Cover slide unit tests pass
-- [ ] Conclusion slide unit tests pass for N=1, N=2, N=3, both storage and non-storage phrasing
-- [ ] `npm test` and `npm run build` both pass
+- [x] Cover slide unit tests pass
+- [x] Conclusion slide unit tests pass for N=1, N=2, N=3, both storage and non-storage phrasing
+- [x] `npm test` and `npm run build` both pass
 
 ---
 
@@ -301,19 +301,19 @@ through `buildComparaisonPptx`, untouched here). Add the `finalizePptx` call at 
 `ConclusionScenario[]` (Task 6's derivation logic).
 
 **Acceptance criteria:**
-- [ ] `node dist/cli.js --pdf test/data/Solar_Edge_ITM_Rixhiem_3_omb_V2.pdf --rangees 3` (sans-
+- [x] `node dist/cli.js --pdf test/data/Solar_Edge_ITM_Rixhiem_3_omb_V2.pdf --rangees 3` (sans-
       stockage) produces a pptx with cover first, 1 conclusion block last
-- [ ] The equivalent `--scenario stockage` run produces the same, with storage phrasing
-- [ ] A `--scenario comparaison` run with 1, 2, and 3 groupes each produce a pptx with cover
+- [x] The equivalent `--scenario stockage` run produces the same, with storage phrasing
+- [x] A `--scenario comparaison` run with 1, 2, and 3 groupes each produce a pptx with cover
       first, N conclusion blocks last, correct per-groupe phrasing/values
-- [ ] `slide1Applied`/`slide2Applied`/etc. counters returned by `renderSansStockage`/
+- [x] `slide1Applied`/`slide2Applied`/etc. counters returned by `renderSansStockage`/
       `renderStockage` are unaffected (those functions are untouched)
 
 **Verification:**
-- [ ] Tests pass: `npm test` (full suite, including `tests/generate/render.test.ts`,
+- [x] Tests pass: `npm test` (full suite, including `tests/generate/render.test.ts`,
       `tests/generate/comparaison.test.ts` — extend these with cover/conclusion assertions)
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: run all 3 CLI scenarios against `test/data/` fixtures, convert each output
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: run all 3 CLI scenarios against `test/data/` fixtures, convert each output
       through the LibreOffice preview pipeline, visually confirm cover/conclusion look right
 
 **Dependencies:** Task 4, Task 6
@@ -332,9 +332,9 @@ through `buildComparaisonPptx`, untouched here). Add the `finalizePptx` call at 
 ---
 
 ### Checkpoint: Phase 4 (end-to-end)
-- [ ] All 3 scenario types verified end-to-end via CLI against real `test/data/` fixtures
-- [ ] Generated pptx files open cleanly (LibreOffice conversion, or manual open if available)
-- [ ] `npm test` and `npm run build` pass
+- [x] All 3 scenario types verified end-to-end via CLI against real `test/data/` fixtures
+- [x] Generated pptx files open cleanly (LibreOffice conversion, or manual open if available)
+- [x] `npm test` and `npm run build` pass
 
 ---
 
@@ -346,11 +346,11 @@ generation) and the chart readability change, in the relevant sections of `READM
 "Ce que l'outil remplace" section per scenario, plus a short mention near the top).
 
 **Acceptance criteria:**
-- [ ] Someone reading `README.md` cold understands that every generated pptx now has a cover +
+- [x] Someone reading `README.md` cold understands that every generated pptx now has a cover +
       conclusion slide, and that the cover's logo placeholder is meant to be replaced by the user
 
 **Verification:**
-- [ ] Manual: re-read `README.md` cold
+- [x] Manual: re-read `README.md` cold
 
 **Dependencies:** Task 7
 
@@ -362,8 +362,8 @@ generation) and the chart readability change, in the relevant sections of `READM
 ---
 
 ## Checkpoint: Complete
-- [ ] All acceptance criteria across all 8 tasks met
-- [ ] `npm test` and `npm run build` pass
-- [ ] All 3 scenario types manually verified end-to-end
-- [ ] `README.md` up to date
-- [ ] Ready for `/code-review-and-quality`
+- [x] All acceptance criteria across all 8 tasks met
+- [x] `npm test` and `npm run build` pass
+- [x] All 3 scenario types manually verified end-to-end
+- [x] `README.md` up to date
+- [x] Ready for `/code-review-and-quality`
