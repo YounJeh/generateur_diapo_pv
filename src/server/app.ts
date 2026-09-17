@@ -1,7 +1,7 @@
 import express, { type Request, type Response, type NextFunction } from "express";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { OUTPUT_DIR } from "./sessions.js";
+import { blobUploadTokenRouter } from "./routes/blobUploadToken.js";
 import { extractRouter } from "./routes/extract.js";
 import { generateRouter } from "./routes/generate.js";
 
@@ -19,15 +19,18 @@ export function createApp(): express.Express {
     res.json({ status: "ok" });
   });
 
+  app.use("/api", express.json({ limit: "1mb" }));
+  app.use("/api", blobUploadTokenRouter);
   app.use("/api", extractRouter);
   app.use("/api", generateRouter);
 
-  // Sert les pptx générés et les images d'aperçu (voir sessionOutputPptxPath/sessionOutputPreviewDir).
-  app.use("/files", express.static(OUTPUT_DIR));
+  // Les PDF sources, le pptx généré et les images d'aperçu vivent tous dans
+  // Vercel Blob (voir sessions.ts) : le client y accède via des URLs signées
+  // à durée de vie limitée, jamais via une route statique de ce serveur.
 
   app.use(express.static(WEB_DIST_DIR));
   app.use((req, res, next) => {
-    if (req.method !== "GET" || req.path.startsWith("/api") || req.path.startsWith("/files")) {
+    if (req.method !== "GET" || req.path.startsWith("/api")) {
       next();
       return;
     }

@@ -21,13 +21,11 @@
     "adm-zip": "^0.5.16",
     "canvas": "^2.11.2",
     "express": "^5.2.1",
-    "multer": "^2.4.0",
     "pdfjs-dist": "^4.7.76"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.5",
     "@types/express": "^5.0.6",
-    "@types/multer": "^2.2.0",
     "@types/node": "^22.7.4",
     "concurrently": "^9.2.4",
     "tsx": "^4.19.1",
