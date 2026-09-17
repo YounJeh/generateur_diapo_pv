@@ -21,6 +21,7 @@
     "adm-zip": "^0.5.16",
     "canvas": "^2.11.2",
     "express": "^5.2.1",
+    "path2d": "^0.3.4",
     "pdfjs-dist": "^4.7.76"
   },
   "devDependencies": {

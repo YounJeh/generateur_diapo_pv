@@ -1,4 +1,11 @@
-import { createCanvas, DOMMatrix, type Canvas, type CanvasRenderingContext2D } from "canvas";
+import {
+  createCanvas,
+  CanvasRenderingContext2D as NodeCanvasRenderingContext2D,
+  DOMMatrix,
+  type Canvas,
+  type CanvasRenderingContext2D,
+} from "canvas";
+import { applyPath2DToCanvasRenderingContext, Path2D } from "path2d";
 import type { PDFPageProxy } from "pdfjs-dist";
 import { CHART_FONT_FAMILY } from "../chart/fonts.js";
 
@@ -10,6 +17,23 @@ import { CHART_FONT_FAMILY } from "../chart/fonts.js";
 // typé).
 const globalWithDOMMatrix = globalThis as { DOMMatrix?: typeof DOMMatrix };
 globalWithDOMMatrix.DOMMatrix ??= DOMMatrix;
+
+// pdfjs a aussi besoin d'un `Path2D` global pour peindre certains clips/motifs
+// (ex. le même losange de hachures) — node-canvas n'en fournit pas
+// (contrairement à @napi-rs/canvas, que pdfjs essaie de charger en premier et
+// dont l'absence dégrade silencieusement en `Cannot polyfill Path2D` sans
+// jamais planter... jusqu'à ce qu'un rendu en ait réellement besoin, ce qui
+// n'arrive qu'avec certains PDF, d'où l'absence de symptôme en local avant un
+// vrai déploiement). `path2d` comble ce manque : `applyPath2D...` apprend à
+// `fill`/`stroke`/`clip` de node-canvas à accepter une instance `Path2D`.
+// Cast : les types de node-canvas et de `path2d` pour `CanvasRenderingContext2D`
+// ne s'alignent pas exactement (ex. la surcharge de `isPointInPath`), mais
+// l'usage runtime suit exactement le README de `path2d` pour node-canvas.
+applyPath2DToCanvasRenderingContext(
+  NodeCanvasRenderingContext2D as unknown as Parameters<typeof applyPath2DToCanvasRenderingContext>[0],
+);
+const globalWithPath2D = globalThis as { Path2D?: typeof Path2D };
+globalWithPath2D.Path2D ??= Path2D;
 
 /**
  * pdfjs crée aussi ses propres canvas internes pendant le rendu (groupes de
