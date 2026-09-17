@@ -5,6 +5,7 @@ import {
 import { openPdfPage } from "../pdf/document.js";
 import { findMonthlyEnergyChartBounds } from "../pdf/monthlyEnergyChartBounds.js";
 import { renderChartImage } from "../pdf/renderChart.js";
+import { toConclusionScenario } from "../pptx/conclusionSlide.js";
 import { replaceChartImage, replaceMonthlyChartImage } from "../pptx/replaceImage.js";
 import { replaceRuns } from "../pptx/replaceText.js";
 import { buildSlide1Replacements } from "../pptx/slide1Map.js";
@@ -15,6 +16,7 @@ import {
 } from "../pptx/slide2MapStorage.js";
 import { getEntryText, openPptx, setEntryText, type Pptx } from "../pptx/zip.js";
 import type { SlideValues, StorageSlideValues } from "../types.js";
+import { finalizePptx } from "./finalize.js";
 import { TEMPLATE_PPTX } from "./types.js";
 
 const CHART_IMAGE_ENTRY = {
@@ -128,4 +130,28 @@ export async function renderStockage(
     slide2Applied: slide2Applied.length,
     slide3Applied: slide3Applied.length,
   };
+}
+
+/**
+ * Équivalent de `renderSansStockage`, complété par la slide de couverture
+ * et la slide de conclusion (1 seul scénario) — c'est cette variante que
+ * les points d'entrée (CLI, API web) appellent pour un pptx autonome
+ * (hors scénario "comparaison", qui appelle `renderSansStockage` par cas
+ * puis `finalizePptx` une seule fois pour tout le pptx assemblé — voir
+ * `comparaison.ts`).
+ */
+export function renderSansStockageStandalone(values: SlideValues): RenderSansStockageResult {
+  const result = renderSansStockage(values);
+  finalizePptx(result.zip, [toConclusionScenario(1, values)]);
+  return result;
+}
+
+/** Équivalent de `renderSansStockageStandalone` pour le scénario "avec stockage" — voir sa jsdoc. */
+export async function renderStockageStandalone(
+  pdf: string,
+  values: StorageSlideValues,
+): Promise<RenderStockageResult> {
+  const result = await renderStockage(pdf, values);
+  finalizePptx(result.zip, [toConclusionScenario(1, values)]);
+  return result;
 }

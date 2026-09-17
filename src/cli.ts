@@ -3,7 +3,7 @@ import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { buildComparaisonPptx, type CaseResult } from "./generate/comparaison.js";
 import { extractSansStockage, extractStockage } from "./generate/extract.js";
-import { renderSansStockage, renderStockage } from "./generate/render.js";
+import { renderSansStockageStandalone, renderStockageStandalone } from "./generate/render.js";
 import { SCENARIOS, type Groupe, type Scenario, type TemplateScenario } from "./generate/types.js";
 import { SLIDE2_OUT_OF_SCOPE_TEXTS } from "./pptx/slide2Map.js";
 import { writePptx } from "./pptx/zip.js";
@@ -223,14 +223,14 @@ async function run(argv: string[]): Promise<void> {
   if (scenario === "sans-stockage") {
     const values = await extractSansStockage(pdf, rangees);
     printExtractedSansStockage(values);
-    const { zip, slide1Applied, slide2Applied } = renderSansStockage(values);
+    const { zip, slide1Applied, slide2Applied } = renderSansStockageStandalone(values);
     printRenderSummarySansStockage(slide1Applied, slide2Applied);
     await mkdir(path.dirname(output), { recursive: true });
     writePptx(zip, output);
   } else {
     const values = await extractStockage(pdf, rangees);
     printExtractedStockage(values);
-    const { zip, slide1Applied, slide2Applied, slide3Applied } = await renderStockage(
+    const { zip, slide1Applied, slide2Applied, slide3Applied } = await renderStockageStandalone(
       pdf,
       values,
     );

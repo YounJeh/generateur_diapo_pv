@@ -4,6 +4,7 @@ import { appendSlides } from "../pptx/mergeSlides.js";
 import type { Pptx } from "../pptx/zip.js";
 import type { SlideValues, StorageSlideValues } from "../types.js";
 import { extractSansStockage, extractStockage } from "./extract.js";
+import { finalizePptx } from "./finalize.js";
 import { renderSansStockage, renderStockage } from "./render.js";
 import type { Groupe, TemplateScenario } from "./types.js";
 
@@ -152,6 +153,13 @@ export async function buildComparaisonPptx(groupes: Groupe[]): Promise<Comparais
   if (!baseZip) {
     throw new Error("Aucun groupe valide fourni pour le scénario comparaison.");
   }
+
+  // Couverture + conclusion une seule fois pour le pptx assemblé (jamais
+  // par cas/groupe individuel) : la conclusion a besoin de la liste
+  // complète des groupes, donc ne peut être ajoutée qu'ici, une fois
+  // l'assemblage terminé.
+  finalizePptx(baseZip, deriveConclusionScenarios(groupeResults));
+  totalSlides += 2;
 
   return { zip: baseZip, totalSlides, groupes: groupeResults, warnings };
 }
