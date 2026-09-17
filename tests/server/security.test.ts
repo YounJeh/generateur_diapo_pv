@@ -16,16 +16,32 @@ import { createApp } from "../../src/server/app.js";
  * `src/server/sessions.ts`, appliqué à la fois par `/api/extract` (lecture)
  * et `/api/blob/upload-token` (écriture).
  */
+const TEST_PASSWORD = "test-password";
+
 describe("sécurité : entrées non fiables rejetées avant d'atteindre le stockage Blob", () => {
   let baseUrl: string;
   let server: Server;
+  let authCookie: string;
 
   beforeAll(async () => {
+    process.env.APP_PASSWORD = TEST_PASSWORD;
     const app = createApp();
     server = createServer(app);
     await new Promise<void>((resolve) => server.listen(0, resolve));
     const { port } = server.address() as AddressInfo;
     baseUrl = `http://127.0.0.1:${port}`;
+
+    const loginResponse = await fetch(`${baseUrl}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `password=${encodeURIComponent(TEST_PASSWORD)}`,
+      redirect: "manual",
+    });
+    const setCookie = loginResponse.headers.get("set-cookie");
+    if (!setCookie) {
+      throw new Error("Échec de connexion au serveur de test (pas de cookie renvoyé).");
+    }
+    authCookie = setCookie.split(";")[0];
   });
 
   afterAll(async () => {
@@ -39,7 +55,7 @@ describe("sécurité : entrées non fiables rejetées avant d'atteindre le stock
     const otherSessionId = randomUUID();
     const response = await fetch(`${baseUrl}/api/blob/upload-token`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Cookie: authCookie },
       body: JSON.stringify({
         type: "blob.generate-client-token",
         payload: {
@@ -59,7 +75,7 @@ describe("sécurité : entrées non fiables rejetées avant d'atteindre le stock
     const sessionId = randomUUID();
     const response = await fetch(`${baseUrl}/api/extract`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Cookie: authCookie },
       body: JSON.stringify({
         sessionId,
         scenario: "sans-stockage",
@@ -76,7 +92,7 @@ describe("sécurité : entrées non fiables rejetées avant d'atteindre le stock
   it("renvoie 404 (pas une erreur système de fichiers) pour un sessionId au format traversal", async () => {
     const response = await fetch(
       `${baseUrl}/api/generate/${encodeURIComponent("../../../../etc/passwd")}`,
-      { method: "POST" },
+      { method: "POST", headers: { Cookie: authCookie } },
     );
 
     expect(response.status).toBe(404);

@@ -1,6 +1,7 @@
 import express, { type Request, type Response, type NextFunction } from "express";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { createAuthGate } from "./authGate.js";
 import { blobUploadTokenRouter } from "./routes/blobUploadToken.js";
 import { extractRouter } from "./routes/extract.js";
 import { generateRouter } from "./routes/generate.js";
@@ -18,6 +19,9 @@ export function createApp(): express.Express {
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok" });
   });
+
+  app.use(express.urlencoded({ extended: false }));
+  app.use(createAuthGate(process.env.APP_PASSWORD ?? ""));
 
   app.use("/api", express.json({ limit: "1mb" }));
   app.use("/api", blobUploadTokenRouter);
