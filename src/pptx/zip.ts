@@ -64,3 +64,7 @@ export function addEntryBuffer(
 export function writePptx(zip: Pptx, outputPath: string): void {
   zip.writeZip(outputPath);
 }
+
+export function listEntryNames(zip: Pptx): string[] {
+  return zip.getEntries().map((entry) => entry.entryName);
+}

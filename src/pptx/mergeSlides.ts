@@ -18,7 +18,7 @@ const SLIDE_RELATIONSHIP_TYPE =
 const IMAGE_RELATIONSHIP_TYPE_SUFFIX = "/relationships/image";
 const NOTES_SLIDE_RELATIONSHIP_TYPE_SUFFIX = "/relationships/notesSlide";
 
-interface RelationshipEntry {
+export interface RelationshipEntry {
   id: string;
   type: string;
   target: string;
@@ -146,7 +146,8 @@ function registerSlideInPresentation(zip: Pptx, slideNumber: number): void {
   );
 }
 
-function parseRelationships(relsXml: string): RelationshipEntry[] {
+/** Réutilisé par `graftSlide.ts` pour la fusion inter-templates (masters/layouts distincts). */
+export function parseRelationships(relsXml: string): RelationshipEntry[] {
   const entries: RelationshipEntry[] = [];
   for (const tag of relsXml.match(/<Relationship\b[^>]*\/>/g) ?? []) {
     const id = tag.match(/\bId="([^"]+)"/)?.[1];
@@ -160,7 +161,8 @@ function parseRelationships(relsXml: string): RelationshipEntry[] {
   return entries;
 }
 
-function buildRelationshipsXml(
+/** Réutilisé par `graftSlide.ts`. */
+export function buildRelationshipsXml(
   relationships: readonly RelationshipEntry[],
 ): string {
   const items = relationships
@@ -172,7 +174,8 @@ function buildRelationshipsXml(
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${items}</Relationships>`;
 }
 
-function nextNumericSuffix(ids: readonly string[], prefix: string): number {
+/** Réutilisé par `graftSlide.ts`. */
+export function nextNumericSuffix(ids: readonly string[], prefix: string): number {
   let max = 0;
   for (const id of ids) {
     const match = id.match(new RegExp(`^${prefix}(\\d+)$`));

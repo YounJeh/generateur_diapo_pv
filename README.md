@@ -6,7 +6,10 @@ valeurs — texte et graphiques — sans toucher au reste de la mise en forme.
 Trois scénarios sont pris en charge : "sans stockage" (2 slides, pages 1-2 du
 PDF), "avec stockage" (3 slides, pages 1-3 du PDF), et "comparaison" (4+
 slides, combine N groupes de dimensionnement, chacun avec un cas sans
-stockage et/ou avec stockage).
+stockage et/ou avec stockage). Chaque pptx généré, quel que soit le
+scénario, s'ouvre sur une slide de couverture et se termine sur une slide de
+conclusion récapitulant les scénarios présentés (voir
+[Couverture et conclusion](#couverture-et-conclusion)).
 
 Deux façons d'utiliser l'outil : une **interface web locale** (recommandée,
 voir ci-dessous) ou la **ligne de commande** directement.
@@ -169,6 +172,30 @@ l'implantation physique, pas du stockage, donc une divergence suggère que
 les deux PDF du groupe ne décrivent pas le même dimensionnement. Aucune
 vérification n'est faite entre groupes différents, qui décrivent
 intentionnellement des dimensionnements distincts.
+
+### Couverture et conclusion
+
+Ajoutées automatiquement à **chaque** pptx généré (sans stockage, avec
+stockage, comparaison), à partir du template
+`assets/templates/template-intro-conclusion.pptx` :
+
+- **Slide de couverture**, en première position. L'emplacement du logo
+  client est un simple cadre pointillé "LOGO CLIENT" — à remplacer à la main
+  dans PowerPoint par le logo du client final (aucune donnée client n'est
+  intégrée automatiquement à cet emplacement).
+- **Slide de conclusion**, en dernière position : un bloc "Scénario N" par
+  scénario présenté dans le pptx (1 pour sans stockage/avec stockage seuls,
+  N pour une comparaison à N groupes), avec le taux d'autoconsommation et le
+  taux de couverture des besoins énergétiques de chacun. Pour un groupe qui
+  fournit les deux cas (sans et avec stockage), c'est le cas **avec
+  stockage** qui est repris dans ce résumé. La phrase de clôture s'accorde
+  au nombre de scénarios (singulier pour 1, pluriel au-delà).
+
+### Graphique "Résultats de consommation et de production annuelles"
+
+Texte et épaisseur des barres sont dimensionnés pour rester lisibles tout en
+tenant dans le cadre-image fixe de la slide (la longueur des barres, elle,
+reste proportionnelle aux MWh — ce n'est pas un réglage de taille).
 
 ## Développement
 

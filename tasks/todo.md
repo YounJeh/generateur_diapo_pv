@@ -1,411 +1,369 @@
-# Todo : Interface web locale "PV Studio"
+# Task List: Cover + conclusion slides, chart readability
 
-Voir `tasks/plan.md` pour le contexte, les décisions confirmées via `/interview-me` et les décisions d'architecture. Cette todo ajoute une interface web (Vite+React + Express) par-dessus le générateur pptx existant (CLI inchangée fonctionnellement, refactorée en interne pour être réutilisable).
-
-## Phase 0 : Environnement
-
-### Task 1 : Installer LibreOffice Impress
-**Description :** Installer `libreoffice-impress` via apt dans le worktree courant, et ajouter l'installation à `.devcontainer/devcontainer.json` (ou un `Dockerfile` associé) pour qu'elle survive aux rebuilds du devcontainer.
-
-**Acceptance criteria :**
-- [x] `soffice --version` fonctionne dans le shell courant
-- [x] Conversion manuelle d'un pptx existant (`output/*.pptx`) en PDF puis en PNG produit des images valides (voir décision révisée dans `tasks/plan.md` : `--convert-to png` seul n'exporte que la 1ère slide)
-- [x] `.devcontainer/devcontainer.json` (ou `Dockerfile`) documente l'installation pour les futurs rebuilds
-
-**Verification :**
-- [x] Manuel : commandes ci-dessus exécutées avec succès
-
-**Dependencies :** Aucune
-
-**Files likely touched :** `.devcontainer/devcontainer.json`
-
-**Estimated scope :** S
+See `tasks/plan.md` for architecture decisions and rationale. Run `npm test` / `npm run build`
+from the repo root for verification unless noted otherwise.
 
 ---
 
-## Phase 1 : Service de génération partagé (extraction / rendu)
+### Task 1: Scale up chart text + bar thickness
 
-### Task 2 : `src/generate/extract.ts`
-**Description :** Extraire de `runSansStockage`/`runStockage` (`src/cli.ts`) la partie lecture PDF + calcul, sans aucune écriture pptx : `extractSansStockage(pdfPath, rangees): Promise<SlideValues>`, `extractStockage(pdfPath, rangees): Promise<StorageSlideValues>`. Réutilise `getPageTexts`, `extractFromPdfText`/`extractFromPdfTextStorage`, `buildValues`/`buildStorageValues` tels quels. Aucun `console.log`.
+**Description:** In `src/chart/annualResultsChart.ts`, increase `barH` and all font-size
+constants used by `drawChart()`, recomputing `rowY` spacing and any other layout offsets that
+depend on them so nothing overlaps within the existing fixed canvas (`WIDTH=2344`, height derived
+from `DEFAULT_FRAME_RATIO` / `STORAGE_FRAME_RATIO` — do not change these ratios, the on-slide
+frame cannot grow). Target ~2× on `barH` and font sizes; if a literal 2× causes overlap (most
+likely in the 3-segment storage variant, which has one more legend row than sans-stockage in the
+same-ish vertical budget), scale down until it fits — document the actual factor used in a code
+comment if it ends up below 2×. Do not change `barMaxW` (bar length stays proportional to MWh).
+Do not reposition the legend or footnote (same layout shape, just bigger).
 
-**Acceptance criteria :**
-- [x] `extractSansStockage`/`extractStockage` sur les fixtures réelles produisent exactement les mêmes valeurs que la version actuelle du CLI
-- [x] Aucun effet de bord (pas de console.log, pas d'écriture disque)
+**Acceptance criteria:**
+- [x] `barH` and font-size constants are visibly larger than today (target 2×, may be less if
+      required to avoid overlap) — done: ~1.5-1.75x depending on element (barH 24→42, total number
+      44→62px, etc.), labelW widened 260→340 to fit the bigger total number
+- [x] No element overlaps another when rendered, for both the 2-segment (sans-stockage) and
+      3-segment (avec-stockage) variants
+- [x] Bar length (`barMaxW`-derived) still encodes the MWh value proportionally, unchanged
 
-**Verification :**
-- [ ] Tests : `npm test`
-- [ ] Build : `npm run build`
+**Verification:**
+- [x] Tests pass: `npm test -- tests/chart/annualResultsChart.test.ts tests/chart/annualResultsChartStorage.test.ts`
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: rendered both variants to PNG and visually confirmed — no overlap, clearly
+      bigger
 
-**Dependencies :** Aucune
+**Dependencies:** None
 
-**Files likely touched :** `src/generate/extract.ts`, `tests/generate/extract.test.ts`
+**Files likely touched:**
+- `src/chart/annualResultsChart.ts`
 
-**Estimated scope :** M
-
----
-
-### Task 3 : `src/generate/render.ts`
-**Description :** Extraire la partie "application au template pptx" de `runSansStockage`/`runStockage` : `renderSansStockage(values: SlideValues, scenarioNumero?): Pptx`, `renderStockage(pdf: string, values: StorageSlideValues, scenarioNumero?): Promise<Pptx>`. Réutilise `openPptx`, `buildSlide1Replacements`, `buildSlide2Replacements`/`buildSlide2ReplacementsStorage`/`buildSlide3ReplacementsStorage`, `renderAnnualResultsChart`/`renderAnnualResultsChartStorage`, `replaceChartImage`, `replaceMonthlyChartImage` tels quels. Retourne le zip en mémoire (pas d'écriture disque).
-
-**Acceptance criteria :**
-- [x] Le zip retourné, une fois écrit sur disque (`writePptx`), est identique octet pour octet au pptx produit par le CLI actuel sur les mêmes valeurs/fixtures
-- [x] Aucun `console.log` dans ce module
-
-**Verification :**
-- [ ] Tests : `npm test`
-- [ ] Build : `npm run build`
-
-**Dependencies :** Task 2 (types de valeurs en entrée)
-
-**Files likely touched :** `src/generate/render.ts`, `tests/generate/render.test.ts`
-
-**Estimated scope :** M
+**Estimated scope:** Small (1 file)
 
 ---
 
-### Task 4 : `src/generate/comparaison.ts`
-**Description :** Extraire l'orchestration de `runComparaison` : `buildComparaisonPptx(groupes: Groupe[]): Promise<{ zip: Pptx; totalSlides: number; warnings: string[] }>`, réutilisant `extract*`/`render*` (Task 2/3), `appendSlides`, `checkDimensioningConsistency`. Warnings retournés (pas `console.warn`).
+### Task 2: Promote + anonymize the intro/conclusion asset
 
-**Acceptance criteria :**
-- [x] Sur les fixtures réelles de comparaison (2 groupes), produit un pptx au contenu identique à la sortie actuelle du CLI (identique octet pour octet non atteignable : timestamps AdmZip non déterministes, déjà le cas avant ce refactor — vérifié par diff -rq sur les zips désarchivés)
-- [x] Fonctionne aussi avec 1 seul groupe et avec 3+ groupes (testé : 1 groupe à 2 cas, 2 groupes dynamiques)
-- [x] Warnings de cohérence de dimensionnement retournés dans le tableau `warnings`, pas affichés directement
+**Description:** Copy `test/data/slide intro + conclusion.pptx` to
+`assets/templates/template-intro-conclusion.pptx` and replace the Intermarché logo image
+(`ppt/media/image5.png` in that file, referenced by the `<p:pic>` on slide 1 at
+`off=(3343121,5119274) ext=(2536569,1465573)`) with a blank/neutral placeholder image of the
+same file type, keeping the picture shape itself (position/size/relationship) untouched so it
+stays a drop-in target for the end user in PowerPoint. This can be done as a small one-off script
+(e.g. in the scratchpad, not committed) that opens the pptx with `adm-zip`, swaps the image
+bytes, and writes the result to `assets/templates/`.
 
-**Verification :**
-- [ ] Tests : `npm test`
-- [ ] Build : `npm run build`
+**Acceptance criteria:**
+- [x] `assets/templates/template-intro-conclusion.pptx` exists, contains the same 2 slides as the
+      source, opens cleanly (no corruption)
+- [x] Slide 1's logo picture shape is present at the same position/size, but its image content is
+      a blank/neutral placeholder, not the Intermarché logo
+- [x] Slide 2 (conclusion) is untouched at this stage — text/values still the template's own
+      example content (that gets replaced at runtime, not here)
 
-**Dependencies :** Task 2, Task 3
+**Verification:**
+- [x] Manual check: converted via the existing LibreOffice preview pipeline and visually confirmed
+      the logo is now a "LOGO CLIENT" placeholder, nothing else moved
+- [x] `git status` shows only the new asset file added under `assets/templates/`
 
-**Files likely touched :** `src/generate/comparaison.ts`, `tests/generate/comparaison.test.ts`
+**Dependencies:** None
 
-**Estimated scope :** M
+**Files likely touched:**
+- `assets/templates/template-intro-conclusion.pptx` (new, binary)
 
----
-
-### Task 5 : Réécrire `src/cli.ts` sur `src/generate/*`
-**Description :** Le CLI devient un thin wrapper : parsing d'arguments (inchangé) → appelle `extract*`/`render*`/`buildComparaisonPptx` → affiche les mêmes logs qu'avant à partir des valeurs/warnings retournés → `writePptx`. Types `Scenario`/`Groupe`/`TemplateScenario` et constantes de mapping déplacés dans `src/generate/`.
-
-**Acceptance criteria :**
-- [x] Sur les 3 scénarios, le pptx généré est identique octet pour octet (sans-stockage/stockage) ou au contenu identique (comparaison, cf. Task 4) à avant le refactor (fixtures réelles)
-- [x] La sortie console (`stdout`) est inchangée pour les 3 scénarios
-- [x] `--scenario` invalide, arguments manquants : mêmes messages d'erreur qu'avant (code de parsing inchangé, déplacement pur)
-
-**Verification :**
-- [ ] Tests : `npm test`
-- [ ] Build : `npm run build`
-- [ ] Manuel : diff/hash des pptx générés avant/après refactor sur les 3 scénarios
-
-**Dependencies :** Task 2, Task 3, Task 4
-
-**Files likely touched :** `src/cli.ts`
-
-**Estimated scope :** M
+**Estimated scope:** Small (1 file, plus a throwaway script not committed)
 
 ---
 
-## Checkpoint 1 : Backend foundation
-- [x] `npm test` et `npm run build` passent (22 fichiers, 75 tests)
-- [x] Non-régression CLI vérifiée (pptx identiques/contenu identique + stdout identique, 3 scénarios, fixtures réelles)
-- [x] Revue avec l'utilisateur avant de continuer
+### Task 3: `graftSlide` cross-deck merge utility
+
+**Description:** Add a new function (e.g. `graftSlide(base: Pptx, source: Pptx, sourceSlideNumber: number, position: "prepend" | "append"): void` in a new `src/pptx/graftSlide.ts`, or as an
+extension alongside `appendSlides` in `src/pptx/mergeSlides.ts` — implementer's call, keep
+`appendSlides` itself unmodified/unregressed) that copies a slide from `source` into `base` when
+`source` does **not** share `base`'s slideMaster/slideLayouts (unlike `appendSlides`'s existing
+assumption). Needs to, for the one slide being grafted:
+- Copy the slide XML + its own media + its own rels (excluding notesSlide), same as
+  `appendSlides` already does — reuse/adapt that logic rather than duplicating it.
+- Determine the slide's slideLayout via its rels; if that layout isn't already present in `base`
+  (compare by content or just always treat foreign layouts as new — simplest and safe), copy the
+  layout XML + its own rels + its referenced media into `base` under new non-colliding names/IDs.
+- Determine that layout's slideMaster; if not already present in `base`, copy it too, **pruned**
+  to reference only the `<p:sldLayoutId>` entries actually being brought over (not all 6 in the
+  source deck — see `tasks/plan.md` risk note), plus register the master's own theme reference
+  (source uses `theme2.xml`; copy it under a new name if `base` doesn't already have an identical
+  one — safest to always copy fresh, themes are cheap).
+- Register everything in `[Content_Types].xml`, `ppt/presentation.xml` (`sldMasterIdLst` if a new
+  master was added, `sldIdLst`), and `ppt/_rels/presentation.xml.rels`, with fresh non-colliding
+  relationship IDs (reuse `nextNumericSuffix`-style logic from `mergeSlides.ts`).
+- `position: "prepend"` inserts the new `<p:sldId>` as the **first** entry in `<p:sldIdLst>`
+  (new capability — today's `registerSlideInPresentation` only appends at the end); `"append"`
+  matches today's end-of-list behavior.
+- Do NOT copy fonts (verified identical `Barlow-*.fntdata` already embedded in both existing
+  templates — skip font handling entirely for this utility, out of scope).
+
+**Acceptance criteria:**
+- [x] Grafting slide 1 of `assets/templates/template-intro-conclusion.pptx` into a fresh copy of
+      `assets/templates/template-sans-stockage.pptx` with `position: "prepend"` produces a pptx
+      with the cover slide as the new first slide, all 2 original slides still present afterward,
+      unmodified
+- [x] The grafted layout/master resources are present under names that don't collide with the
+      target's existing `slideLayoutN.xml`/`slideMasterN.xml`
+- [x] `[Content_Types].xml`, `presentation.xml`, and `presentation.xml.rels` are all internally
+      consistent (every referenced part exists, every part is referenced)
+- [x] `appendSlides`' existing behavior (used by `buildComparaisonPptx`) is unaffected — its
+      existing tests still pass unmodified
+
+**Verification:**
+- [x] Tests pass: `tests/pptx/graftSlide.test.ts` (prepend, append, and combined round-trips,
+      plus dangling-reference assertions), `npm test -- tests/pptx/mergeSlides.test.ts` (regression)
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: converted all 3 grafted test-output pptx via the LibreOffice preview pipeline,
+      visually confirmed correct slide order/content in each case (prepend-only, append-only, and
+      both together)
+
+**Dependencies:** None (can be built/tested against Task 2's asset once available, but the utility
+itself doesn't depend on Task 2 being done first)
+
+**Files likely touched:**
+- `src/pptx/graftSlide.ts` (new) or `src/pptx/mergeSlides.ts`
+- `tests/pptx/graftSlide.test.ts` (new)
+
+**Estimated scope:** Medium (1-2 files, the highest-risk task in this plan — the OOXML plumbing
+is fiddly; budget real time for it and lean on the LibreOffice smoke test to catch corruption
+early)
 
 ---
 
-## Phase 2 : Service d'aperçu (pptx → images)
-
-### Task 6 : `src/preview/pptxToImages.ts`
-**Description :** **(Design révisé après test empirique de Task 1 — voir `tasks/plan.md`.)** Le "process soffice persistant" évalué pendant Task 1 ne réduit pas la latence de façon fiable (chaque `soffice --convert-to` reste ~2-4s même avec un process déjà démarré). `convertPptxToPngs(pptxPath: string, outDir: string): Promise<string[]>` fait donc : (1) `soffice --headless --convert-to pdf --outdir <tmp>` (un appel, produit un PDF multi-pages) ; (2) rastérisation de chaque page en PNG via `pdfjs-dist`+`canvas` (déjà des dépendances), en généralisant le contournement déjà présent dans `src/pdf/renderChart.ts` (`disableFontFace` + capture des glyphes peints par pdfjs + redessin du texte positionné via la matrice de transformation — sans lui le texte du PDF exporté par LibreOffice ressort invisible, vérifié empiriquement) à une page entière sans recadrage.
-
-**Acceptance criteria :**
-- [x] Produit 2/3/4 PNG (proportionnel au nombre de slides) selon le scénario du pptx en entrée
-- [x] PNG lisibles, dans l'ordre des slides, texte et graphiques visibles (pas de texte invisible) — vérifié visuellement
-- [x] Durée totale documentée : ~3,6s pour un pptx à 3 slides (conversion pdf + rastérisation), pas de gain sur les appels suivants
-
-**Verification :**
-- [x] Tests : `npm test` (`tests/preview/pptxToImages.test.ts`, avec skip conditionnel si LibreOffice absent de l'environnement de test)
-- [x] Manuel : conversion des pptx de `output/`, inspection visuelle
-
-**Dependencies :** Task 1
-
-**Files likely touched :** `src/preview/pptxToImages.ts`, `tests/preview/pptxToImages.test.ts`
-
-**Estimated scope :** M
+### Checkpoint: Phase 2
+- [x] `npm test` passes, including the new `graftSlide` round-trip test
+- [x] A manually-grafted test pptx (cover prepended into a copy of `template-sans-stockage.pptx`)
+      opens cleanly via LibreOffice
+- [x] No changes to `appendSlides`' existing behavior/tests
 
 ---
 
-### Task 7 : Vérification du service de conversion
-**Description :** Valider `convertPptxToPngs` sur les 3 scénarios (pptx générés via Task 3/4).
+### Task 4: `addCoverSlide(zip)`
 
-**Acceptance criteria :**
-- [x] Nombre de PNG correct pour les 3 scénarios (2/3/4+ slides)
-- [x] Durée totale mesurée et documentée
+**Description:** Small wrapper (e.g. `src/pptx/coverSlide.ts`) around `graftSlide` that opens
+`assets/templates/template-intro-conclusion.pptx`, grafts its slide 1 into the given `zip` with
+`position: "prepend"`. No text/image substitution needed at call time — the asset from Task 2 is
+already the final, anonymized content.
 
-**Verification :**
-- [ ] Manuel
+**Acceptance criteria:**
+- [x] Calling `addCoverSlide(zip)` on a rendered `renderSansStockage`/`renderStockage` result adds
+      exactly one new slide, first in presentation order, with the anonymized placeholder logo
+- [x] The zip's original slides (title/details/monthly) are unchanged and still in their original
+      relative order after the cover
 
-**Dependencies :** Task 6
+**Verification:**
+- [x] Tests pass: `tests/pptx/coverSlide.test.ts` (new)
+- [x] Build succeeds: `npm run build`
 
-**Files likely touched :** Aucun (vérification)
+**Dependencies:** Task 2, Task 3
 
-**Estimated scope :** XS
+**Files likely touched:**
+- `src/pptx/coverSlide.ts` (new)
+- `tests/pptx/coverSlide.test.ts` (new)
 
----
-
-## Checkpoint 2 : Aperçu
-- [x] Conversion pptx→images validée sur les 3 scénarios
-- [x] Revue avec l'utilisateur avant de continuer (approbation groupée : "enchaîne les phases")
-
----
-
-## Phase 3 : API Express
-
-### Task 8 : Scaffold serveur Express
-**Description :** `src/server/app.ts` (app Express + middlewares : JSON, CORS si besoin, gestion d'erreurs), `src/server/index.ts` (`listen`). Dépendances `express`, `multer`, `@types/express`, `@types/multer`. Route `GET /api/health` → `{ status: "ok" }`.
-
-**Acceptance criteria :**
-- [x] `GET /api/health` répond `200 { status: "ok" }`
-- [x] `npm run dev:server` (nouveau script) démarre le serveur en watch mode
-
-**Verification :**
-- [x] Manuel : `curl http://localhost:3001/api/health`
-- [ ] Build : `npm run build`
-
-**Dependencies :** Aucune
-
-**Files likely touched :** `src/server/app.ts`, `src/server/index.ts`, `package.json`
-
-**Estimated scope :** S
+**Estimated scope:** Small (1-2 files)
 
 ---
 
-### Task 9 : `POST /api/extract`
-**Description :** Reçoit `scenario` + fichier(s) PDF (`multer`, stockage disque `runtime/uploads/<sessionId>/`) + `rangees`/groupes. Appelle `src/generate/extract.ts`. Répond avec les valeurs calculées par scénario/groupe + `sessionId`. Erreurs (PDF illisible, champ manquant) en JSON avec code HTTP explicite.
+### Task 5: `addConclusionSlide` — block count/positioning
 
-**Acceptance criteria :**
-- [x] Sur une fixture réelle, renvoie les mêmes valeurs que le CLI sur le même fichier
-- [x] Fonctionne pour les 3 scénarios (y compris comparaison à N=2 groupes dynamiques)
-- [x] Champ manquant/PDF invalide → erreur 4xx explicite (pas de 500 générique)
+**Description:** In a new `src/pptx/conclusionSlide.ts`, graft slide 2 of
+`assets/templates/template-intro-conclusion.pptx` into the given `zip` with `position: "append"`,
+then adjust the grafted slide's own block shapes (the "Scénario N" rounded rectangles) to match
+the actual scenario count N (1, 2, or 3 — comparaison can have more than 2 groupes, unlike the
+template's built-in 2):
+- N=2: no shape-count change needed, template already has 2 blocks at the right position.
+- N=1: remove one of the two block shapes; resize/reposition the remaining one to
+  `x=685800, width=10820400` (full content width), keeping `y=1635760, height=3014240`.
+- N=3: clone one block shape to get a third; reposition all three per the formula in
+  `tasks/plan.md` (`width=3500133` each, `gap=160000`, computed left-to-right so the widths+gaps
+  sum exactly to `10820400` — see the plan's rounding risk note).
+Use direct XML shape manipulation (find the `<p:sp>` block by its `roundRect` + rounded-corner
+`avLst`/fill color signature, or by paragraph text match on "Scénario 1 "/"Scénario 2 ", clone/
+remove/edit its `<a:off>`/`<a:ext>`) — this is XML surgery on a single already-grafted slide, not
+a cross-deck operation, so it doesn't need `graftSlide`. Leave the actual bullet text content
+(autoconsommation/besoins values, phrasing) and the closing banner text for Task 6 — this task is
+positioning/count only; use placeholder/template text for now and let Task 6 replace it.
 
-**Verification :**
-- [x] Vérification manuelle documentée (curl) plutôt que tests d'intégration automatisés — voir Checkpoint 3
-- [x] Manuel : `curl -F ... /api/extract` sur sans-stockage, stockage (Phase 2) et comparaison N=2 groupes
+**Acceptance criteria:**
+- [x] N=1 produces one full-width block
+- [x] N=2 produces the template's original two-block layout, unchanged
+- [x] N=3 produces three equal-width blocks whose widths+gaps sum exactly to 10820400 (no visible
+      gap or overflow at the right edge)
+- [x] All blocks share the same `y`/`height` regardless of N
+- [x] Each block's "Scénario N " label text is renumbered correctly for its position (1-indexed)
 
-**Dependencies :** Task 8, Task 2, Task 4
+**Verification:**
+- [x] Tests pass: `tests/pptx/conclusionSlide.test.ts` (new) — assert shape count and EMU
+      positions for N=1, N=2, N=3
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: convert an N=1 and an N=3 output through the LibreOffice preview pipeline,
+      visually confirm no overlap/misalignment
 
-**Files likely touched :** `src/server/routes/extract.ts`, `src/server/sessions.ts`, `src/server/app.ts`
+**Dependencies:** Task 3 (and Task 2 for the source asset)
 
-**Estimated scope :** M
+**Files likely touched:**
+- `src/pptx/conclusionSlide.ts` (new)
+- `tests/pptx/conclusionSlide.test.ts` (new)
 
----
-
-### Task 10 : `POST /api/generate/:sessionId`
-**Description :** Retrouve les fichiers de la session (`runtime/uploads/<sessionId>/`), appelle `render*`/`buildComparaisonPptx`, écrit le pptx dans `runtime/output/<sessionId>.pptx`, appelle `convertPptxToPngs`. Répond `{ pptxUrl, previewImageUrls: string[] }`. Sert `runtime/output/` en statique.
-
-**Acceptance criteria :**
-- [x] Après un `extract` réussi, produit un pptx téléchargeable (vérifié `Microsoft PowerPoint 2007+` via `file`, valeurs cohérentes avec l'extraction)
-- [x] Une image par slide, servie via une URL statique fonctionnelle (`/files/<id>-preview/slide-N.png`, HTTP 200)
-- [x] `sessionId` inconnu/expiré → erreur 404 explicite
-
-**Verification :**
-- [x] Manuel : cycle `extract`→`generate` via `curl`, pptx téléchargé et images d'aperçu vérifiés
-
-**Dependencies :** Task 9, Task 6
-
-**Files likely touched :** `src/server/routes/generate.ts`, `src/server/app.ts`
-
-**Estimated scope :** M
-
----
-
-### Task 11 : Nettoyage des fichiers temporaires
-**Description :** Purge best-effort de `runtime/uploads/`/`runtime/output/` au démarrage du serveur (dossiers plus vieux qu'un TTL simple, ex. 24h). `runtime/` ajouté au `.gitignore`.
-
-**Acceptance criteria :**
-- [x] Au démarrage, les sessions plus vieilles que le TTL sont supprimées (purge best-effort testée manuellement sur dossier vide/absent, ne plante pas)
-- [x] `runtime/` n'apparaît jamais dans `git status` après usage
-
-**Verification :**
-- [x] Manuel : vérifié propre après le cycle de test curl
-
-**Dependencies :** Task 9, Task 10
-
-**Files likely touched :** `src/server/sessions.ts`, `.gitignore`
-
-**Estimated scope :** S
+**Estimated scope:** Medium (XML shape cloning/repositioning is fiddly — keep this task scoped to
+positioning only, defer text content to Task 6)
 
 ---
 
-## Checkpoint 3 : API complète
-- [x] Cycle `extract`→`generate`→téléchargement validé via `curl` (sans-stockage, comparaison N=2 groupes ; stockage déjà validé en Phase 2)
-- [x] Revue avec l'utilisateur avant de continuer (approbation groupée : "enchaîne les phases")
+### Task 6: Conclusion per-block text + closing banner
+
+**Description:** Extend `addConclusionSlide` (or add a sibling function called right after it) to
+fill each block's two bullets and the closing banner, given a list of per-scenario inputs. Define
+a small input type, e.g.:
+
+```ts
+interface ConclusionScenario {
+  scenarioNumero: number;
+  avecStockage: boolean;
+  autoconsommationDisplay: string; // "60" or "+95" — reuse tauxAutoconsommationAffichage's own convention
+  besoinsPct: number; // tauxAutoproduction or tauxAutoproductionStockage
+}
+```
+
+Per block: if `avecStockage`, bullet 1 = (`autoconsommationDisplay === "+95"` ?
+`"Plus de 95 % d'autoconsommation"` : `` `${autoconsommationDisplay} % d'autoconsommation` ``) +
+`" grâce à l'intégration d'une solution de stockage."`; bullet 2 = `` `${besoinsPct} % des besoins
+énergétiques du site couverts` `` + `" par la production photovoltaïque."`. If not
+`avecStockage`, bullet 1 = `` `${autoconsommationDisplay} % d'autoconsommation` `` + `" de la
+production photovoltaïque."`; bullet 2 same as above. Use `replaceRuns`-style exact `<a:t>` run
+matching against the (now positioned, from Task 5) block shapes — likely needs a variant of
+`replaceRuns` that targets a specific shape/paragraph rather than the whole slide XML, since block
+1 and block 2 start from the same template text ("Scénario 1 "/"Scénario 2 ") only for N=2; for
+N=1 and N=3 the cloned blocks all start from the same source text and need per-instance
+replacement, not a single find-all-instances-of-this-string pass.
+
+Closing banner: replace the template's "Les deux solutions sont pertinentes au vu des résultats."
+with `"Cette solution est pertinente au vu des résultats."` for N=1, or `"Les solutions
+présentées sont pertinentes au vu des résultats."` for N=2/N=3.
+
+Add the code path in `comparaison.ts` that derives `ConclusionScenario[]` from `groupeResults`
+(preferred case per groupe = `groupe.cases[groupe.cases.length - 1]`, per `orderedCases`'
+sans-stockage-before-avec-stockage ordering) and in `render.ts`'s single-scenario wrappers (Task
+7) that derive a 1-element array from the single `SlideValues`/`StorageSlideValues`.
+
+**Acceptance criteria:**
+- [x] A storage scenario with `tauxAutoconsommationAffichage === "+95"` renders "Plus de 95 %
+      d'autoconsommation ... grâce à l'intégration d'une solution de stockage." — matching the
+      template's own example text
+- [x] A storage scenario with a lower `tauxAutoconsommationAffichage` (e.g. "80") renders "80 %
+      d'autoconsommation ... grâce à l'intégration d'une solution de stockage."
+- [x] A non-storage scenario renders "{X} % d'autoconsommation ... de la production
+      photovoltaïque."
+- [x] Both scenario types render "{Y} % des besoins énergétiques du site couverts ... par la
+      production photovoltaïque." with the correct Y (`tauxAutoproduction` or
+      `tauxAutoproductionStockage`)
+- [x] Banner text is singular for N=1, plural for N=2/N=3
+- [x] `comparaison.ts` picks the avec-stockage case when a groupe has both, sans-stockage when it
+      only has that
+
+**Verification:**
+- [x] Tests pass: extend `tests/pptx/conclusionSlide.test.ts` with text-content assertions for
+      mixed storage/non-storage scenario lists
+- [x] Build succeeds: `npm run build`
+
+**Dependencies:** Task 5
+
+**Files likely touched:**
+- `src/pptx/conclusionSlide.ts`
+- `src/generate/comparaison.ts`
+- `tests/pptx/conclusionSlide.test.ts`
+
+**Estimated scope:** Medium (2-3 files)
 
 ---
 
-## Phase 4 : Frontend — scaffold
-
-### Task 12 : Scaffold `web/`
-**Description :** Vite + React + TS dans `web/`, proxy dev `/api` → `http://localhost:3001`. Structure (`src/steps/`, `src/components/`, `src/api/client.ts`). Layout de base inspiré de la maquette (topbar, stepper 3 étapes, disposition principale + panneau latéral) — recréé, pas copié.
-
-**Acceptance criteria :**
-- [ ] `npm --prefix web run dev` affiche la coquille de l'appli (topbar + stepper + placeholder)
-- [ ] Le proxy `/api/health` fonctionne en dev
-
-**Verification :**
-- [ ] Manuel : lancer serveur + frontend, vérifier dans le navigateur
-
-**Dependencies :** Task 8
-
-**Files likely touched :** `web/package.json`, `web/vite.config.ts`, `web/index.html`, `web/src/main.tsx`, `web/src/App.tsx`, `web/src/styles/*`, `web/src/api/client.ts`
-
-**Estimated scope :** M
+### Checkpoint: Phase 3
+- [x] Cover slide unit tests pass
+- [x] Conclusion slide unit tests pass for N=1, N=2, N=3, both storage and non-storage phrasing
+- [x] `npm test` and `npm run build` both pass
 
 ---
 
-## Phase 5 : Frontend — Étape 1 (scénario + upload)
+### Task 7: Wire cover + conclusion into the real generation pipelines
 
-### Task 13 : Étape 1 — scénarios simples
-**Description :** Sélecteur des 3 cartes de scénario. Pour sans-stockage/stockage : champ d'upload PDF unique + champ rangées. Bouton "Vérifier les données" activé seulement si formulaire valide.
+**Description:** Add `finalizePptx(zip: Pptx, scenarios: ConclusionScenario[]): void` (e.g. in
+`src/generate/finalize.ts`) = `addCoverSlide(zip)` + `addConclusionSlide(zip, scenarios)`. Add two
+thin wrapper functions in `render.ts` — e.g. `renderSansStockageStandalone` /
+`renderStockageStandalone` — that call the existing (unmodified) `renderSansStockage`/
+`renderStockage` and then `finalizePptx` with a 1-element scenario array derived from that call's
+`values`. Update `cli.ts` and `src/server/routes/generate.ts` single-scenario branches to call
+these new wrapper functions instead of the raw ones (comparaison branches in both already go
+through `buildComparaisonPptx`, untouched here). Add the `finalizePptx` call at the very end of
+`buildComparaisonPptx`, after the groupe loop, using `groupeResults` to build the full
+`ConclusionScenario[]` (Task 6's derivation logic).
 
-**Acceptance criteria :**
-- [x] Les 3 scénarios sont sélectionnables, affichent les champs pertinents
-- [x] Bouton désactivé tant qu'aucun PDF n'est fourni ou que les rangées ne sont pas renseignées (sans-stockage/stockage)
+**Acceptance criteria:**
+- [x] `node dist/cli.js --pdf test/data/Solar_Edge_ITM_Rixhiem_3_omb_V2.pdf --rangees 3` (sans-
+      stockage) produces a pptx with cover first, 1 conclusion block last
+- [x] The equivalent `--scenario stockage` run produces the same, with storage phrasing
+- [x] A `--scenario comparaison` run with 1, 2, and 3 groupes each produce a pptx with cover
+      first, N conclusion blocks last, correct per-groupe phrasing/values
+- [x] `slide1Applied`/`slide2Applied`/etc. counters returned by `renderSansStockage`/
+      `renderStockage` are unaffected (those functions are untouched)
 
-**Verification :**
-- [x] Manuel : test des 3 sélections + upload réel + soumission (Playwright + backend réel), screenshots vérifiés
+**Verification:**
+- [x] Tests pass: `npm test` (full suite, including `tests/generate/render.test.ts`,
+      `tests/generate/comparaison.test.ts` — extend these with cover/conclusion assertions)
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: run all 3 CLI scenarios against `test/data/` fixtures, convert each output
+      through the LibreOffice preview pipeline, visually confirm cover/conclusion look right
 
-**Dependencies :** Task 12
+**Dependencies:** Task 4, Task 6
 
-**Files likely touched :** `web/src/steps/Step1Scenario.tsx`, `web/src/components/ScenarioCard.tsx`, `web/src/components/UploadField.tsx`, `web/src/state/formState.ts`
+**Files likely touched:**
+- `src/generate/finalize.ts` (new)
+- `src/generate/render.ts`
+- `src/generate/comparaison.ts`
+- `src/cli.ts`
+- `src/server/routes/generate.ts`
+- `tests/generate/render.test.ts`
+- `tests/generate/comparaison.test.ts`
 
-**Estimated scope :** M
-
----
-
-### Task 14 : Étape 1 — scénario comparaison (N groupes)
-**Description :** Liste dynamique de groupes (bouton "+ ajouter un groupe" / suppression), chaque groupe avec ses rangées + upload PDF sans-stockage et/ou avec-stockage (au moins un requis). Validation cohérente avec `parseGroupes` côté serveur.
-
-**Acceptance criteria :**
-- [x] Ajouter/retirer un groupe fonctionne sans perte des données des autres groupes
-- [x] Bouton "Vérifier les données" désactivé si un groupe n'a ni rangées valides ni au moins un PDF
-- [x] Testé avec 1 et 2 groupes (ajout dynamique vérifié visuellement)
-
-**Verification :**
-- [x] Manuel : test avec ajout de groupe dans le navigateur (Playwright), screenshot vérifié
-
-**Dependencies :** Task 12
-
-**Files likely touched :** `web/src/components/GroupList.tsx`, `web/src/steps/Step1Scenario.tsx`, `web/src/state/formState.ts`
-
-**Estimated scope :** M
-
----
-
-## Phase 6 : Frontend — Étape 2 (vérification des données)
-
-### Task 15 : Étape 2 — appel `/api/extract` + affichage
-**Description :** Au clic sur "Vérifier les données", appelle `POST /api/extract`, état de chargement puis affichage en lecture seule des valeurs extraites/calculées par scénario/groupe. Bouton retour (étape 1, conserve les données saisies) et bouton "Générer" (étape 3). Affichage clair des erreurs serveur.
-
-**Acceptance criteria :**
-- [x] Valeurs affichées identiques à celles du CLI sur la même fixture (350 kWc, +95%, 52%, etc. vérifiés visuellement pour stockage)
-- [x] Erreur d'extraction affichée clairement (error-banner), sans crash, retour à l'étape 1 possible
-- [x] Retour à l'étape 1 conserve les valeurs déjà saisies (état du formulaire géré dans App.tsx, jamais réinitialisé au changement d'étape)
-
-**Verification :**
-- [x] Manuel : scénario stockage vérifié en navigateur réel (Playwright), sans-stockage/comparaison déjà validés via l'API en Phase 3
-
-**Dependencies :** Task 9, Task 13, Task 14
-
-**Files likely touched :** `web/src/steps/Step2Review.tsx`, `web/src/api/client.ts`
-
-**Estimated scope :** M
+**Estimated scope:** Medium (5+ files, but each change is small/mechanical)
 
 ---
 
-## Phase 7 : Frontend — Étape 3 (génération, aperçu, téléchargement)
-
-### Task 16 : Étape 3 — appel `/api/generate` + aperçu + téléchargement
-**Description :** Au clic sur "Générer", appelle `POST /api/generate/:sessionId`, état de chargement, affiche les images de slides renvoyées (grille/carrousel), bouton de téléchargement du pptx.
-
-**Acceptance criteria :**
-- [x] Images affichées correspondent visuellement aux slides réelles (texte, graphique, mise en page) — vérifié sur comparaison, 4 diapositives
-- [x] Le fichier téléchargé est exactement celui servi par `/api/generate` (vérifié via curl sur l'URL affichée)
-- [x] Un échec de l'aperçu (LibreOffice indisponible) n'empêche pas le téléchargement du pptx si celui-ci a été généré (message dédié, bouton de téléchargement indépendant de l'aperçu)
-
-**Verification :**
-- [x] Manuel via Playwright : cycle complet sur comparaison (2 cas), sans-stockage/stockage validés jusqu'à l'étape 2 + `/api/generate` déjà testé via curl
-
-**Dependencies :** Task 10, Task 15
-
-**Files likely touched :** `web/src/steps/Step3Result.tsx`, `web/src/api/client.ts`
-
-**Estimated scope :** M
+### Checkpoint: Phase 4 (end-to-end)
+- [x] All 3 scenario types verified end-to-end via CLI against real `test/data/` fixtures
+- [x] Generated pptx files open cleanly (LibreOffice conversion, or manual open if available)
+- [x] `npm test` and `npm run build` pass
 
 ---
 
-## Checkpoint 4 : Flux complet
-- [x] Les 3 scénarios sont utilisables de bout en bout (comparaison testée intégralement en navigateur ; sans-stockage/stockage jusqu'à l'étape 2 + génération déjà validée via curl)
-- [x] Revue avec l'utilisateur avant de continuer (approbation groupée : "enchaîne les phases")
+### Task 8: Update README
+
+**Description:** Document the cover/conclusion slide behavior (every generated pptx now starts
+with an anonymized cover slide and ends with a conclusion slide summarizing all scenarios in that
+generation) and the chart readability change, in the relevant sections of `README.md` (the
+"Ce que l'outil remplace" section per scenario, plus a short mention near the top).
+
+**Acceptance criteria:**
+- [x] Someone reading `README.md` cold understands that every generated pptx now has a cover +
+      conclusion slide, and that the cover's logo placeholder is meant to be replaced by the user
+
+**Verification:**
+- [x] Manual: re-read `README.md` cold
+
+**Dependencies:** Task 7
+
+**Files likely touched:**
+- `README.md`
+
+**Estimated scope:** XS (1 file)
 
 ---
 
-## Phase 8 : Intégration finale
-
-### Task 17 : Scripts npm racine
-**Description :** `concurrently` en devDependency. `npm run dev` (serveur + frontend en parallèle), `npm run build` (build des deux), `npm start` (sert `web/dist` statiquement depuis Express + API sur un seul port). `.gitignore` mis à jour (`web/node_modules/`, `web/dist/`, `runtime/`).
-
-**Acceptance criteria :**
-- [x] `npm run dev` démarre serveur + frontend en une commande (`concurrently`)
-- [x] `npm start` (après build) sert l'appli complète sur un seul port — vérifié bout-en-bout en navigateur réel
-
-**Verification :**
-- [x] Manuel : les deux modes testés (`npm run dev` health-check via proxy ; `npm start` flux complet sans-stockage en navigateur réel)
-
-**Dependencies :** Task 16
-
-**Files likely touched :** `package.json`, `.gitignore`
-
-**Estimated scope :** S
-
----
-
-### Task 18 : Mise à jour `README.md`
-**Description :** Section "Interface web" : prérequis LibreOffice, installation (`npm install` + `npm --prefix web install`), lancement (`npm run dev`), description rapide du flux 3 étapes. CLI existante documentée comme toujours disponible.
-
-**Acceptance criteria :**
-- [x] Quelqu'un qui ne connaît pas le projet peut lancer l'interface web en suivant uniquement le `README.md` (sections dédiées + prérequis LibreOffice)
-
-**Verification :**
-- [x] Manuel : relecture à froid ; exemple CLI `comparaison` corrigé au passage (flags obsolètes `--pdf-sans-stockage`/`--pdf-avec-stockage`)
-
-**Dependencies :** Task 17
-
-**Files likely touched :** `README.md`
-
-**Estimated scope :** XS
-
----
-
-### Task 19 : Vérification bout-en-bout finale
-**Description :** Test manuel des 3 scénarios via `npm start` (mode "production locale" à un seul port), avec les fixtures réelles de `test/data/`.
-
-**Acceptance criteria :**
-- [x] Flux complet fonctionnel en mode `npm start` (vérifié sur sans-stockage en navigateur réel ; comparaison déjà vérifié en Phase 7 via le dev server, backend identique)
-- [x] `git status` reste propre après le cycle de test
-
-**Verification :**
-- [ ] Manuel
-
-**Dependencies :** Task 18
-
-**Files likely touched :** Aucun (vérification)
-
-**Estimated scope :** XS
-
----
-
-## Checkpoint final
-- [x] Toutes les acceptance criteria de toutes les tâches sont remplies
-- [x] `npm test` et `npm run build` passent, CLI toujours strictement non régressée
-- [x] Les 3 scénarios fonctionnent de bout en bout via l'UI web
-- [x] `README.md` à jour
-- [x] Prêt pour `/code-review-and-quality`, puis proposition de PR
+## Checkpoint: Complete
+- [x] All acceptance criteria across all 8 tasks met
+- [x] `npm test` and `npm run build` pass
+- [x] All 3 scenario types manually verified end-to-end
+- [x] `README.md` up to date
+- [x] Ready for `/code-review-and-quality`

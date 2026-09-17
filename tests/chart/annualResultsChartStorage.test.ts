@@ -37,8 +37,8 @@ describe("renderAnnualResultsChartStorage", () => {
     const context = canvas.getContext("2d");
     context.drawImage(image, 0, 0);
 
-    const BAR_X_START = 324;
-    const BAR_X_END = 324 + 1150;
+    const BAR_X_START = 404;
+    const BAR_X_END = 404 + 1150;
 
     function barWidthAtRow(y: number): number {
       const { data } = context.getImageData(
@@ -61,8 +61,8 @@ describe("renderAnnualResultsChartStorage", () => {
       return lastFilled - firstFilled;
     }
 
-    const productionBarWidth = barWidthAtRow(165);
-    const consommationBarWidth = barWidthAtRow(340);
+    const productionBarWidth = barWidthAtRow(175);
+    const consommationBarWidth = barWidthAtRow(365);
     expect(productionBarWidth).toBeLessThan(consommationBarWidth);
   });
 
@@ -74,7 +74,7 @@ describe("renderAnnualResultsChartStorage", () => {
     context.drawImage(image, 0, 0);
 
     function distinctColorsAtRow(y: number): Set<string> {
-      const { data } = context.getImageData(324, y, 1150, 1);
+      const { data } = context.getImageData(404, y, 1150, 1);
       const colors = new Set<string>();
       for (let x = 0; x < 1150; x++) {
         const i = x * 4;
@@ -104,7 +104,7 @@ describe("renderAnnualResultsChartStorage", () => {
       return clusters.length;
     }
 
-    expect(countDistinctEnough(distinctColorsAtRow(165))).toBeGreaterThanOrEqual(3);
-    expect(countDistinctEnough(distinctColorsAtRow(340))).toBeGreaterThanOrEqual(3);
+    expect(countDistinctEnough(distinctColorsAtRow(175))).toBeGreaterThanOrEqual(3);
+    expect(countDistinctEnough(distinctColorsAtRow(365))).toBeGreaterThanOrEqual(3);
   });
 });

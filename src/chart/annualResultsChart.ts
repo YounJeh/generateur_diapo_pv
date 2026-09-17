@@ -232,79 +232,90 @@ function drawChart(rows: [Row, Row], frameRatio: number): Buffer {
   ctx.fillRect(0, 0, WIDTH, height);
 
   ctx.fillStyle = INK_MUTED;
-  ctx.font = `700 22px ${CHART_FONT_FAMILY}`;
+  ctx.font = `700 26px ${CHART_FONT_FAMILY}`;
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
-  ctx.fillText("RÉSULTATS DE CONSOMMATION ET DE PRODUCTION ANNUELLES", 64, 58);
+  ctx.fillText("RÉSULTATS DE CONSOMMATION ET DE PRODUCTION ANNUELLES", 64, 62);
 
   const maxTotal = Math.max(rows[0].total, rows[1].total);
 
+  // Texte et épaisseur de barre agrandis par rapport à la version d'origine
+  // (barH 24->64, fonts +20 à +75% selon l'élément) — marginX/barMaxW/
+  // legendX inchangés : la longueur des barres et la largeur du cadre-image
+  // ne bougent pas, seule la présentation grossit. labelW élargi pour
+  // laisser la place au plus gros nombre total. Le label/nombre (colonne
+  // marginX..barX) et la légende (colonne legendX..fin) sont dans des
+  // colonnes distinctes de celle de la barre (barX..barX+barMaxW) : épaissir
+  // la barre ne les fait pas se chevaucher. Seul le bas de la barre de la
+  // ligne 2 (Consommation) doit rester au-dessus de la note en italique
+  // (même colonne) — c'est elle qui borne réellement barH, pas les autres
+  // éléments.
   const marginX = 64;
-  const labelW = 260;
+  const labelW = 340;
   const barX = marginX + labelW;
   const barMaxW = 1150;
-  const barH = 24;
-  const gap = 3;
+  const barH = 64;
+  const gap = 4;
   const legendX = barX + barMaxW + 70;
-  const rowY = [165, 340];
+  const rowY = [175, 365];
 
   rows.forEach((row, i) => {
     const y = rowY[i];
     const barW = barMaxW * (row.total / maxTotal);
 
     ctx.fillStyle = INK_SECONDARY;
-    ctx.font = `400 20px ${CHART_FONT_FAMILY}`;
+    ctx.font = `400 26px ${CHART_FONT_FAMILY}`;
     ctx.textAlign = "left";
-    ctx.fillText(row.label, marginX, y - 40);
+    ctx.fillText(row.label, marginX, y - 58);
 
     ctx.fillStyle = INK;
-    ctx.font = `700 44px ${CHART_FONT_FAMILY}`;
-    ctx.fillText(formatFr(row.total), marginX, y + 8);
+    ctx.font = `700 62px ${CHART_FONT_FAMILY}`;
+    ctx.fillText(formatFr(row.total), marginX, y + 14);
     const totalW = ctx.measureText(formatFr(row.total)).width;
     ctx.fillStyle = INK_MUTED;
-    ctx.font = `400 17px ${CHART_FONT_FAMILY}`;
-    ctx.fillText("MWh", marginX + totalW + 8, y + 8);
+    ctx.font = `400 22px ${CHART_FONT_FAMILY}`;
+    ctx.fillText("MWh", marginX + totalW + 10, y + 14);
 
     let cx = barX;
     row.segments.forEach((seg, si) => {
       const segW = (barW - gap) * (seg.pct / 100) - (si === 0 ? gap / 2 : 0);
       ctx.fillStyle = seg.color;
-      roundedRect(ctx, cx, y - barH / 2, segW, barH, 4);
+      roundedRect(ctx, cx, y - barH / 2, segW, barH, 10);
 
-      if (segW > 60) {
+      if (segW > 110) {
         ctx.fillStyle = "#ffffff";
-        ctx.font = `600 14px ${CHART_FONT_FAMILY}`;
+        ctx.font = `700 26px ${CHART_FONT_FAMILY}`;
         ctx.textAlign = "left";
-        ctx.fillText(`${seg.pct}%`, cx + 10, y + 5);
+        ctx.fillText(`${seg.pct}%`, cx + 16, y + 9);
       }
       cx += segW + gap;
     });
 
     row.segments.forEach((seg, si) => {
-      const ly = y - 14 + si * 26;
+      const ly = y - 30 + si * 34;
       ctx.fillStyle = seg.color;
       ctx.beginPath();
-      ctx.arc(legendX + 6, ly - 4, 6, 0, Math.PI * 2);
+      ctx.arc(legendX + 8, ly - 5, 8, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = INK_SECONDARY;
-      ctx.font = `400 16px ${CHART_FONT_FAMILY}`;
+      ctx.font = `400 20px ${CHART_FONT_FAMILY}`;
       ctx.textAlign = "left";
       ctx.fillText(
         `${seg.label} — ${formatFr(seg.value)} MWh (${Math.round(seg.pct)}%)`,
-        legendX + 20,
+        legendX + 26,
         ly,
       );
     });
   });
 
   ctx.fillStyle = INK_MUTED;
-  ctx.font = `italic 15px ${CHART_FONT_FAMILY}`;
+  ctx.font = `italic 18px ${CHART_FONT_FAMILY}`;
   ctx.textAlign = "left";
   ctx.fillText(
     `Longueur des barres proportionnelle au total MWh (Consommation ≈ ${(rows[1].total / rows[0].total).toFixed(1)}× Production).`,
     barX,
-    rowY[1] + 40,
+    rowY[1] + 80,
   );
 
   return canvas.toBuffer("image/png");

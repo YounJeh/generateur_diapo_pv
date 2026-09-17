@@ -2,7 +2,10 @@ import { Router } from "express";
 import path from "node:path";
 import { buildComparaisonPptx } from "../../generate/comparaison.js";
 import { extractSansStockage, extractStockage } from "../../generate/extract.js";
-import { renderSansStockage, renderStockage } from "../../generate/render.js";
+import {
+  renderSansStockageStandalone,
+  renderStockageStandalone,
+} from "../../generate/render.js";
 import type { Groupe } from "../../generate/types.js";
 import { convertPptxToPngs } from "../../preview/pptxToImages.js";
 import { writePptx } from "../../pptx/zip.js";
@@ -48,8 +51,13 @@ generateRouter.post("/generate/:sessionId", async (req, res, next) => {
       const pdfPath = path.join(uploadDir, manifest.pdfFilename);
       const zip =
         manifest.scenario === "sans-stockage"
-          ? renderSansStockage(await extractSansStockage(pdfPath, manifest.rangees)).zip
-          : (await renderStockage(pdfPath, await extractStockage(pdfPath, manifest.rangees))).zip;
+          ? renderSansStockageStandalone(await extractSansStockage(pdfPath, manifest.rangees)).zip
+          : (
+              await renderStockageStandalone(
+                pdfPath,
+                await extractStockage(pdfPath, manifest.rangees),
+              )
+            ).zip;
       writePptx(zip, pptxPath);
     }
 
