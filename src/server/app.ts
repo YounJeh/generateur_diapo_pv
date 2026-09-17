@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createAuthGate } from "./authGate.js";
+import { createCleanupRouter } from "./routes/cleanup.js";
 import { blobUploadTokenRouter } from "./routes/blobUploadToken.js";
 import { extractRouter } from "./routes/extract.js";
 import { generateRouter } from "./routes/generate.js";
@@ -25,6 +26,9 @@ export function createApp(): express.Express {
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok" });
   });
+
+  // Cron uses its own Bearer secret rather than a browser login cookie.
+  app.use(createCleanupRouter(process.env.CRON_SECRET));
 
   app.use(express.urlencoded({ extended: false }));
   app.use(createAuthGate(process.env.APP_PASSWORD ?? ""));

@@ -103,7 +103,7 @@ export function Step1Scenario({ form, onChange, onExtracted }: Props) {
       </section>
 
       <div className="actionbar">
-        <span className="actionbar-note">Vos fichiers ne sont accessibles qu'à vous, le temps de la génération</span>
+        <span className="actionbar-note">Fichiers privés, supprimés lors de la purge quotidienne après 24 h.</span>
         <button
           type="button"
           className="btn btn-primary"

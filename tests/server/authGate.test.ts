@@ -65,4 +65,47 @@ describe("authGate : protection par mot de passe partagé", () => {
     // 404 (session introuvable) et non 401 : la requête a bien passé le gate d'auth.
     expect(authenticated.status).toBe(404);
   });
+
+  it("ignore un cookie sans encodage valide au lieu de renvoyer 500", async () => {
+    const response = await fetch(`${baseUrl}/api/extract`, {
+      method: "POST", headers: { Cookie: "unrelated=%; pv_studio_auth=%" },
+    });
+    expect(response.status).toBe(401);
+  });
+
+  it("préserve un cookie d’authentification valide avec un autre cookie malformé", async () => {
+    const login = await fetch(`${baseUrl}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `password=${TEST_PASSWORD}`, redirect: "manual",
+    });
+    const cookie = login.headers.get("set-cookie")!.split(";")[0];
+    const response = await fetch(`${baseUrl}/api/unknown`, {
+      headers: { Cookie: `unrelated=%; ${cookie}` },
+    });
+    expect(response.status).toBe(404);
+  });
+
+  it("bloque les essais répétés, y compris un bon mot de passe après la limite", async () => {
+    const statuses: number[] = [];
+    for (let i = 0; i < 11; i++) {
+      const response = await fetch(`${baseUrl}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "password=wrong", redirect: "manual",
+      });
+      statuses.push(response.status);
+    }
+    expect(statuses).toContain(401);
+    expect(statuses.at(-1)).toBe(429);
+    const response = await fetch(`${baseUrl}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `password=${TEST_PASSWORD}`, redirect: "manual",
+    });
+    expect(response.status).toBe(429);
+    expect(Number(response.headers.get("retry-after"))).toBeGreaterThan(0);
+    expect(response.headers.get("set-cookie")).toBeNull();
+  });
+
 });

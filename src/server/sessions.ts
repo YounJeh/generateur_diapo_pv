@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { get, issueSignedToken, presignUrl, put } from "@vercel/blob";
 import type { Scenario } from "../generate/types.js";
+import { isSessionFileExpired } from "./sessionRetention.js";
 
 const DOWNLOAD_URL_TTL_MS = 15 * 60 * 1000;
 
@@ -119,7 +120,8 @@ export async function readSessionManifest(
   }
   try {
     const result = await get(manifestPathname(sessionId), { access: "private" });
-    if (!result) {
+    if (!result || isSessionFileExpired(result.blob.uploadedAt)) {
+      await result?.stream?.cancel();
       return undefined;
     }
     const text = await new Response(result.stream).text();
@@ -147,8 +149,9 @@ export async function downloadPathnameToScratch(
   localFilename: string,
 ): Promise<string> {
   const result = await get(pathname, { access: "private" });
-  if (!result) {
-    throw new Error(`Fichier introuvable : "${pathname}".`);
+  if (!result || isSessionFileExpired(result.blob.uploadedAt)) {
+    await result?.stream?.cancel();
+    throw new Error(`Fichier introuvable ou expiré : "${pathname}".`);
   }
   const buffer = Buffer.from(await new Response(result.stream).arrayBuffer());
   const destPath = path.join(scratchDir, localFilename);
@@ -183,7 +186,4 @@ export function outputPptxDownloadPathname(sessionId: string): string {
   return outputPptxPathname(sessionId);
 }
 
-// NOTE : contrairement à l'ancien nettoyage sur disque local (TTL 24h balayé
-// au démarrage du serveur), il n'y a pas de purge périodique des blobs de
-// session ici : un job de nettoyage régulier (Vercel Cron) serait nécessaire,
-// hors périmètre de ce déploiement.
+// Les fichiers de plus de 24 h sont supprimés par /api/cron/cleanup (purge quotidienne).

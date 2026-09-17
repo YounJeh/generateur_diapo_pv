@@ -60,6 +60,7 @@ export default function App() {
             PV<span className="brand-light">studio</span>
           </span>
         </a>
+        <a href="/login">Se connecter</a>
       </header>
 
       <div className="workspace">

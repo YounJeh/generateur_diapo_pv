@@ -40,8 +40,9 @@ npm run dev
 ```
 
 Démarre le serveur Express (API, port 3001) et le serveur de développement
-Vite (port 5173, proxy `/api`/`/files` vers le serveur) en une seule
-commande. Ouvrir `http://localhost:5173`.
+Vite (port 5173, proxy `/api` et `/login` vers le serveur) en une seule
+commande. Ouvrir `http://localhost:5173/login` pour se connecter ; la connexion
+renvoie ensuite à l’application.
 
 Pour un usage local à un seul port (après `npm run build`) :
 
@@ -63,8 +64,41 @@ Le flux en 3 étapes :
    fidèle via LibreOffice), puis téléchargement du fichier `.pptx`.
 
 Les templates pptx (`assets/templates/`) sont sélectionnés automatiquement
-selon le scénario — rien à uploader de ce côté. Tout reste local : aucune
-donnée n'est envoyée en dehors de votre machine.
+selon le scénario — rien à uploader de ce côté. L’interface web envoie les
+rapports et les fichiers générés dans un store Vercel Blob privé, y compris
+en développement local. La CLI traite les fichiers localement.
+
+## Configuration du serveur et de Vercel
+
+Renseigner les variables de `.env.example` dans l’environnement du serveur
+(`tsx`/`node` ne chargent pas automatiquement ce fichier) ou dans les paramètres
+Vercel :
+
+- `APP_PASSWORD` : mot de passe partagé, requis en local et sur Vercel.
+- `BLOB_READ_WRITE_TOKEN` : accès au store Blob privé.
+- `UPSTASH_REDIS_REST_URL` et `UPSTASH_REDIS_REST_TOKEN` : URL HTTPS et token
+  REST d’une base Redis Upstash, requis sur Vercel. Les compteurs sont partagés
+  entre les instances et limitent chaque IP à 10 essais par fenêtre de 15 minutes,
+  succès compris. Redis indisponible : la connexion répond 503, sans contourner
+  la limitation. Sans ces variables en local, le compteur est en mémoire.
+- `CRON_SECRET` : secret aléatoire (au moins 32 caractères) à configurer en
+  production pour autoriser la purge. Aucun cookie utilisateur n’autorise
+  cette route.
+
+Le compteur Redis est incrémenté avec expiration dans un script atomique via
+[l’API REST Upstash](https://upstash.com/docs/redis/features/restapi).
+`vercel.json` planifie un nettoyage quotidien à 03:00 UTC ; Vercel transmet
+`CRON_SECRET` dans l’en-tête Bearer
+([documentation](https://vercel.com/docs/cron-jobs/manage-cron-jobs)).
+
+Les fichiers de plus de 24 heures sont supprimés lors de cette purge : PDF,
+manifests, PPTX et aperçus, y compris les uploads abandonnés. Une session expirée
+est rejetée à la lecture avant même la purge. La suppression physique se produit
+normalement entre 24 et environ 48 heures après l’upload, selon l’exécution du
+cron quotidien ; surveiller ses échecs. Les liens de téléchargement expirent
+après 15 minutes. La purge n’est exécutée automatiquement que sur le déploiement
+de production ; en local, appeler `GET /api/cron/cleanup` avec
+`Authorization: Bearer <CRON_SECRET>` ou utiliser un planificateur externe.
 
 ## Ligne de commande (CLI)
 

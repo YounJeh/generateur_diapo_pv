@@ -1,5 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
+import { createLoginRateLimiter, type LoginRateLimiter } from "./loginRateLimit.js";
 
 const COOKIE_NAME = "pv_studio_auth";
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -53,9 +54,13 @@ function parseCookies(header: string | undefined): Record<string, string> {
     if (separatorIndex === -1) {
       continue;
     }
-    cookies[part.slice(0, separatorIndex).trim()] = decodeURIComponent(
-      part.slice(separatorIndex + 1).trim(),
-    );
+    try {
+      cookies[part.slice(0, separatorIndex).trim()] = decodeURIComponent(
+        part.slice(separatorIndex + 1).trim(),
+      );
+    } catch {
+      // A malformed unrelated cookie must not prevent authentication.
+    }
   }
   return cookies;
 }
@@ -88,7 +93,7 @@ function loginPageHtml(error?: string): string {
 }
 
 /** Middleware qui gère `/login` (GET affiche le formulaire, POST le traite) et bloque tout le reste sans cookie valide. */
-export function createAuthGate(password: string) {
+export function createAuthGate(password: string, limiter?: LoginRateLimiter) {
   if (!password) {
     throw new Error(
       "APP_PASSWORD manquant : requis pour protéger l'accès à l'appli (données clients).",
@@ -96,14 +101,27 @@ export function createAuthGate(password: string) {
   }
   const key = signingKey(password);
   const secureCookie = process.env.VERCEL === "1";
+  const consumeAttempt = limiter ?? createLoginRateLimiter();
 
-  return function authGate(req: Request, res: Response, next: NextFunction) {
+  return async function authGate(req: Request, res: Response, next: NextFunction) {
     if (req.path === "/login") {
       if (req.method === "GET") {
         res.type("html").send(loginPageHtml());
         return;
       }
       if (req.method === "POST") {
+        let retryAfter: number;
+        try {
+          retryAfter = await consumeAttempt(req);
+        } catch {
+          res.status(503).type("html").send(loginPageHtml("Connexion temporairement indisponible. Réessayez plus tard."));
+          return;
+        }
+        if (retryAfter > 0) {
+          res.set("Retry-After", String(retryAfter));
+          res.status(429).type("html").send(loginPageHtml("Trop de tentatives. Réessayez dans quelques minutes."));
+          return;
+        }
         const submitted = typeof req.body?.password === "string" ? req.body.password : "";
         if (!passwordsMatch(submitted, password)) {
           res.status(401).type("html").send(loginPageHtml("Mot de passe incorrect."));
