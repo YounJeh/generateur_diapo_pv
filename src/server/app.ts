@@ -1,6 +1,7 @@
 import express, { type Request, type Response, type NextFunction } from "express";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { createAuthGate } from "./authGate.js";
 import { blobUploadTokenRouter } from "./routes/blobUploadToken.js";
 import { extractRouter } from "./routes/extract.js";
@@ -11,7 +12,12 @@ import { generateRouter } from "./routes/generate.js";
 // Vite. En développement (`npm run dev`), ce dossier n'existe pas et Vite
 // sert le frontend séparément (proxy /api vers ce serveur) — voir
 // web/vite.config.ts.
-const WEB_DIST_DIR = path.join(process.cwd(), "web", "dist");
+//
+// Résolu par rapport à ce module, pas à `process.cwd()` : sur Vercel, le
+// répertoire de travail courant d'une fonction serverless ne correspond pas
+// forcément à la racine du bundle (même classe de bug que TEMPLATE_PPTX,
+// voir generate/types.ts).
+const WEB_DIST_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "web", "dist");
 
 export function createApp(): express.Express {
   const app = express();
