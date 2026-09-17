@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildComparaisonPptx } from "../../src/generate/comparaison.js";
+import { buildComparaisonPptx, deriveConclusionScenarios } from "../../src/generate/comparaison.js";
 import type { Pptx } from "../../src/pptx/zip.js";
 
 const PDF_SANS_STOCKAGE = "test/data/Solar_Edge_ITM_Rixhiem_3_omb_V2.pdf";
@@ -34,6 +34,20 @@ describe("buildComparaisonPptx", () => {
 
   it("rejette un tableau de groupes vide", async () => {
     await expect(buildComparaisonPptx([])).rejects.toThrow(/[Aa]ucun groupe/);
+  });
+
+  it("deriveConclusionScenarios préfère le cas avec-stockage quand les deux sont présents", async () => {
+    const result = await buildComparaisonPptx([
+      { rangees: 3, pdfSansStockage: PDF_SANS_STOCKAGE, pdfAvecStockage: PDF_AVEC_STOCKAGE },
+      { rangees: 2, pdfSansStockage: PDF_SANS_STOCKAGE_2 },
+    ]);
+
+    const scenarios = deriveConclusionScenarios(result.groupes);
+    expect(scenarios).toHaveLength(2);
+    // Groupe 1 : les deux cas sont fournis -> le cas avec-stockage doit être préféré.
+    expect(scenarios[0]).toMatchObject({ scenarioNumero: 1, avecStockage: true });
+    // Groupe 2 : seul le cas sans-stockage est fourni.
+    expect(scenarios[1]).toMatchObject({ scenarioNumero: 2, avecStockage: false });
   });
 });
 

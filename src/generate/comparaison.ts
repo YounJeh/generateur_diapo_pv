@@ -1,4 +1,5 @@
 import { checkDimensioningConsistency } from "../dimensioningCheck.js";
+import { toConclusionScenario, type ConclusionScenario } from "../pptx/conclusionSlide.js";
 import { appendSlides } from "../pptx/mergeSlides.js";
 import type { Pptx } from "../pptx/zip.js";
 import type { SlideValues, StorageSlideValues } from "../types.js";
@@ -49,6 +50,20 @@ export interface ComparaisonResult {
   groupes: GroupeResult[];
   /** Avertissements de cohérence de dimensionnement, déjà formatés (préfixés "Avertissement (groupe N) : "), pas encore affichés. */
   warnings: string[];
+}
+
+/**
+ * Dérive les données de la slide de conclusion (un `ConclusionScenario` par
+ * groupe) : le cas "préféré" d'un groupe est le dernier de `orderedCases`
+ * (avec-stockage si présent, sinon sans-stockage — cf. tri de
+ * `orderedCases`), conformément à la règle métier : pour un même scénario
+ * avec et sans batterie, c'est le cas avec batterie qui fait foi.
+ */
+export function deriveConclusionScenarios(groupes: GroupeResult[]): ConclusionScenario[] {
+  return groupes.map((groupe) => {
+    const preferredCase = groupe.cases[groupe.cases.length - 1];
+    return toConclusionScenario(groupe.scenarioNumero, preferredCase.values);
+  });
 }
 
 /**
