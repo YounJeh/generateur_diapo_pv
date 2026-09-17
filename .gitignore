@@ -4,3 +4,8 @@ test/output/
 output/
 runtime/
 *.log
+.env
+.env.local
+.vercel
+.env*
+!.env.example
