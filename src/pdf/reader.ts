@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
+import "./pdfjsSetup.js";
 
 /**
  * Lecteur PDF simple : lit uniquement les pages demandées et retourne

@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { loadImage } from "canvas";
+import { loadImage } from "@napi-rs/canvas";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { convertPptxToPngs } from "../../src/preview/pptxToImages.js";
 import { extractSansStockage, extractStockage } from "../../src/generate/extract.js";

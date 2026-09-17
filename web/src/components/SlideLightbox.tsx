@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type PointerEvent, type WheelEvent } from "react";
+import type { PreviewSlide } from "../preview/types";
+import { SlidePreview } from "./SlidePreview";
 
 interface Props {
-  imageUrls: string[];
+  slides: PreviewSlide[];
   startIndex: number;
   onClose: () => void;
 }
@@ -10,7 +12,7 @@ const MIN_SCALE = 1;
 const MAX_SCALE = 4;
 const ZOOM_STEP = 0.0015;
 
-export function SlideLightbox({ imageUrls, startIndex, onClose }: Props) {
+export function SlideLightbox({ slides, startIndex, onClose }: Props) {
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [scale, setScale] = useState(MIN_SCALE);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -19,7 +21,7 @@ export function SlideLightbox({ imageUrls, startIndex, onClose }: Props) {
   );
 
   const canGoPrevious = currentIndex > 0;
-  const canGoNext = currentIndex < imageUrls.length - 1;
+  const canGoNext = currentIndex < slides.length - 1;
 
   function resetZoom() {
     setScale(MIN_SCALE);
@@ -32,7 +34,7 @@ export function SlideLightbox({ imageUrls, startIndex, onClose }: Props) {
   }
 
   function goToNext() {
-    setCurrentIndex((current) => Math.min(imageUrls.length - 1, current + 1));
+    setCurrentIndex((current) => Math.min(slides.length - 1, current + 1));
     resetZoom();
   }
 
@@ -46,13 +48,14 @@ export function SlideLightbox({ imageUrls, startIndex, onClose }: Props) {
         goToNext();
       }
     }
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => { window.removeEventListener("keydown", handleKeyDown); document.body.style.overflow = overflow; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onClose, imageUrls.length]);
+  }, [onClose, slides.length]);
 
-  function handleWheel(event: WheelEvent<HTMLImageElement>) {
-    event.preventDefault();
+  function handleWheel(event: WheelEvent<HTMLDivElement>) {
     setScale((current) => {
       const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, current - event.deltaY * ZOOM_STEP));
       if (next === MIN_SCALE) {
@@ -62,13 +65,13 @@ export function SlideLightbox({ imageUrls, startIndex, onClose }: Props) {
     });
   }
 
-  function handlePointerDown(event: PointerEvent<HTMLImageElement>) {
+  function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
     if (scale <= MIN_SCALE) return;
     dragState.current = { startX: event.clientX, startY: event.clientY, startOffset: offset };
     event.currentTarget.setPointerCapture(event.pointerId);
   }
 
-  function handlePointerMove(event: PointerEvent<HTMLImageElement>) {
+  function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
     if (!dragState.current) return;
     const { startX, startY, startOffset } = dragState.current;
     setOffset({
@@ -77,7 +80,7 @@ export function SlideLightbox({ imageUrls, startIndex, onClose }: Props) {
     });
   }
 
-  function handlePointerUp(event: PointerEvent<HTMLImageElement>) {
+  function handlePointerUp(event: PointerEvent<HTMLDivElement>) {
     dragState.current = null;
     event.currentTarget.releasePointerCapture(event.pointerId);
   }
@@ -88,7 +91,7 @@ export function SlideLightbox({ imageUrls, startIndex, onClose }: Props) {
         className="lightbox-content"
         role="dialog"
         aria-modal="true"
-        aria-label={`Diapositive ${currentIndex + 1} sur ${imageUrls.length}, agrandie`}
+        aria-label={`Diapositive ${currentIndex + 1} sur ${slides.length}, agrandie`}
         onClick={(event) => event.stopPropagation()}
       >
         <button
@@ -112,11 +115,10 @@ export function SlideLightbox({ imageUrls, startIndex, onClose }: Props) {
         )}
 
         <div className="lightbox-viewport">
-          <img
-            src={imageUrls[currentIndex]}
-            alt={`Diapositive ${currentIndex + 1}`}
+          <div
             className="lightbox-image"
             style={{
+              width: `min(90vw, ${80 * slides[currentIndex].width / slides[currentIndex].height}vh)`,
               transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
               cursor: scale > MIN_SCALE ? "grab" : "zoom-in",
             }}
@@ -124,8 +126,9 @@ export function SlideLightbox({ imageUrls, startIndex, onClose }: Props) {
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
-            draggable={false}
-          />
+          >
+            <SlidePreview slide={slides[currentIndex]} label={`Diapositive ${currentIndex + 1}`} />
+          </div>
         </div>
 
         {canGoNext && (
@@ -140,7 +143,7 @@ export function SlideLightbox({ imageUrls, startIndex, onClose }: Props) {
         )}
 
         <p className="lightbox-caption">
-          Diapositive {currentIndex + 1} / {imageUrls.length}
+          Diapositive {currentIndex + 1} / {slides.length}
         </p>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { createCanvas } from "canvas";
+import { createCanvas } from "@napi-rs/canvas";
 import { createHash } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";

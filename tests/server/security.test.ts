@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -8,21 +9,39 @@ import { createApp } from "../../src/server/app.js";
  * `src/server/routes/extract.ts` construisait le nom de fichier sur disque à
  * partir de `file.fieldname` (nom de champ multipart, fourni par le client),
  * que multer ne sanitize pas avant `path.join` — un champ forgé permettait
- * d'écrire un fichier arbitraire hors de `runtime/uploads/<sessionId>/`
- * (vérifié manuellement en écrivant dans /tmp pendant la revue). Corrigé par
- * un allowlist strict sur `file.fieldname` (`fileFilter`) et par la
- * validation du format de `sessionId` dans `src/server/sessions.ts`.
+ * d'écrire un fichier arbitraire hors de `runtime/uploads/<sessionId>/`.
+ * Depuis le passage à Vercel Blob, l'équivalent est un `pathname` de blob
+ * forgé (pointant hors de `sessions/<sessionId>/uploads/`, ou vers la
+ * session de quelqu'un d'autre) : corrigé par `isUploadPathnameFor` dans
+ * `src/server/sessions.ts`, appliqué à la fois par `/api/extract` (lecture)
+ * et `/api/blob/upload-token` (écriture).
  */
-describe("sécurité : entrées non fiables rejetées avant d'atteindre le système de fichiers", () => {
+const TEST_PASSWORD = "test-password";
+
+describe("sécurité : entrées non fiables rejetées avant d'atteindre le stockage Blob", () => {
   let baseUrl: string;
   let server: Server;
+  let authCookie: string;
 
   beforeAll(async () => {
+    process.env.APP_PASSWORD = TEST_PASSWORD;
     const app = createApp();
     server = createServer(app);
     await new Promise<void>((resolve) => server.listen(0, resolve));
     const { port } = server.address() as AddressInfo;
     baseUrl = `http://127.0.0.1:${port}`;
+
+    const loginResponse = await fetch(`${baseUrl}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `password=${encodeURIComponent(TEST_PASSWORD)}`,
+      redirect: "manual",
+    });
+    const setCookie = loginResponse.headers.get("set-cookie");
+    if (!setCookie) {
+      throw new Error("Échec de connexion au serveur de test (pas de cookie renvoyé).");
+    }
+    authCookie = setCookie.split(";")[0];
   });
 
   afterAll(async () => {
@@ -31,27 +50,49 @@ describe("sécurité : entrées non fiables rejetées avant d'atteindre le syst�
     });
   });
 
-  it("rejette un champ de fichier dont le nom contient une traversée de chemin", async () => {
-    const form = new FormData();
-    form.set("scenario", "sans-stockage");
-    form.set("rangees", "3");
-    form.set(
-      "../../../../../../tmp/should-not-be-written",
-      new Blob([Buffer.from("canary")]),
-      "x.pdf",
-    );
-
-    const response = await fetch(`${baseUrl}/api/extract`, { method: "POST", body: form });
+  it("rejette un pathname d'upload qui ne correspond pas à la session (upload-token)", async () => {
+    const sessionId = randomUUID();
+    const otherSessionId = randomUUID();
+    const response = await fetch(`${baseUrl}/api/blob/upload-token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: authCookie },
+      body: JSON.stringify({
+        type: "blob.generate-client-token",
+        payload: {
+          pathname: `sessions/${otherSessionId}/uploads/pdf.pdf`,
+          multipart: false,
+          clientPayload: sessionId,
+        },
+      }),
+    });
 
     expect(response.ok).toBe(false);
     const body = (await response.json()) as { error?: string };
-    expect(body.error).toMatch(/Champ de fichier inattendu/);
+    expect(body.error).toMatch(/non autorisé/);
+  });
+
+  it("rejette un pathname de fichier PDF invalide à l'extraction", async () => {
+    const sessionId = randomUUID();
+    const response = await fetch(`${baseUrl}/api/extract`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: authCookie },
+      body: JSON.stringify({
+        sessionId,
+        scenario: "sans-stockage",
+        rangees: 3,
+        pdfPathname: "sessions/../../../etc/passwd",
+      }),
+    });
+
+    expect(response.ok).toBe(false);
+    const body = (await response.json()) as { error?: string };
+    expect(body.error).toMatch(/Fichier PDF manquant ou invalide/);
   });
 
   it("renvoie 404 (pas une erreur système de fichiers) pour un sessionId au format traversal", async () => {
     const response = await fetch(
       `${baseUrl}/api/generate/${encodeURIComponent("../../../../etc/passwd")}`,
-      { method: "POST" },
+      { method: "POST", headers: { Cookie: authCookie } },
     );
 
     expect(response.status).toBe(404);

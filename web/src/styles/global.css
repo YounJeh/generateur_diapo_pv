@@ -671,13 +671,11 @@ button {
 }
 
 .lightbox-nav-prev {
-  left: -8px;
-  transform: translate(-100%, -50%);
+  left: 8px;
 }
 
 .lightbox-nav-next {
-  right: -8px;
-  transform: translate(100%, -50%);
+  right: 8px;
 }
 
 .footer {

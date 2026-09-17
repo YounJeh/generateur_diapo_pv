@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import type { PDFPageProxy } from "pdfjs-dist";
+import "./pdfjsSetup.js";
 
 /** Ouvre une page d'un PDF (utilisé par le rendu/crop du graphique, en plus du lecteur texte simple). */
 export async function openPdfPage(

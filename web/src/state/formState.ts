@@ -51,28 +51,3 @@ export function isFormValid(form: FormState): boolean {
   }
   return form.pdf !== null && form.rangees > 0;
 }
-
-export function buildExtractFormData(form: FormState): FormData {
-  const data = new FormData();
-  data.set("scenario", form.scenario);
-
-  if (form.scenario === "comparaison") {
-    form.groupes.forEach((groupe, index) => {
-      const n = index + 1;
-      data.set(`groupe-${n}-rangees`, String(groupe.rangees));
-      if (groupe.pdfSansStockage) {
-        data.set(`groupe-${n}-pdf-sans-stockage`, groupe.pdfSansStockage);
-      }
-      if (groupe.pdfAvecStockage) {
-        data.set(`groupe-${n}-pdf-avec-stockage`, groupe.pdfAvecStockage);
-      }
-    });
-    return data;
-  }
-
-  data.set("rangees", String(form.rangees));
-  if (form.pdf) {
-    data.set("pdf", form.pdf);
-  }
-  return data;
-}

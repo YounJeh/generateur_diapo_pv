@@ -4,3 +4,10 @@ test/output/
 output/
 runtime/
 *.log
+.env
+.env.local
+.vercel
+.env*
+!.env.example
+web/test-results/
+web/playwright-report/

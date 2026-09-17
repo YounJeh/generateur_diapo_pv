@@ -1,0 +1,9 @@
+{
+  "installCommand": "npm install && npm --prefix web install",
+  "outputDirectory": "public",
+  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }],
+  "functions": {
+    "api/index.ts": { "maxDuration": 60 }
+  },
+  "crons": [{ "path": "/api/cron/cleanup", "schedule": "0 3 * * *" }]
+}

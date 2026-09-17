@@ -1,7 +1,10 @@
 import express, { type Request, type Response, type NextFunction } from "express";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { OUTPUT_DIR } from "./sessions.js";
+import { fileURLToPath } from "node:url";
+import { createAuthGate } from "./authGate.js";
+import { createCleanupRouter } from "./routes/cleanup.js";
+import { blobUploadTokenRouter } from "./routes/blobUploadToken.js";
 import { extractRouter } from "./routes/extract.js";
 import { generateRouter } from "./routes/generate.js";
 
@@ -10,7 +13,12 @@ import { generateRouter } from "./routes/generate.js";
 // Vite. En développement (`npm run dev`), ce dossier n'existe pas et Vite
 // sert le frontend séparément (proxy /api vers ce serveur) — voir
 // web/vite.config.ts.
-const WEB_DIST_DIR = path.join(process.cwd(), "web", "dist");
+//
+// Résolu par rapport à ce module, pas à `process.cwd()` : sur Vercel, le
+// répertoire de travail courant d'une fonction serverless ne correspond pas
+// forcément à la racine du bundle (même classe de bug que TEMPLATE_PPTX,
+// voir generate/types.ts).
+const WEB_DIST_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "web", "dist");
 
 export function createApp(): express.Express {
   const app = express();
@@ -19,15 +27,24 @@ export function createApp(): express.Express {
     res.json({ status: "ok" });
   });
 
+  // Cron uses its own Bearer secret rather than a browser login cookie.
+  app.use(createCleanupRouter(process.env.CRON_SECRET));
+
+  app.use(express.urlencoded({ extended: false }));
+  app.use(createAuthGate(process.env.APP_PASSWORD ?? ""));
+
+  app.use("/api", express.json({ limit: "1mb" }));
+  app.use("/api", blobUploadTokenRouter);
   app.use("/api", extractRouter);
   app.use("/api", generateRouter);
 
-  // Sert les pptx générés et les images d'aperçu (voir sessionOutputPptxPath/sessionOutputPreviewDir).
-  app.use("/files", express.static(OUTPUT_DIR));
+  // Les PDF sources et le pptx généré vivent dans
+  // Vercel Blob (voir sessions.ts) : le client y accède via des URLs signées
+  // à durée de vie limitée, jamais via une route statique de ce serveur.
 
   app.use(express.static(WEB_DIST_DIR));
   app.use((req, res, next) => {
-    if (req.method !== "GET" || req.path.startsWith("/api") || req.path.startsWith("/files")) {
+    if (req.method !== "GET" || req.path.startsWith("/api")) {
       next();
       return;
     }
