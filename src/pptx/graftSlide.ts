@@ -210,13 +210,16 @@ function registerSlideInPresentation(
  *
  * `position` place la nouvelle slide en tête (`"prepend"`) ou à la fin
  * (`"append"`) de `<p:sldIdLst>` — `appendSlides` ne gère que l'ajout en fin.
+ *
+ * Retourne le numéro de la nouvelle slide dans `base` (`ppt/slides/slide${N}.xml`),
+ * pour permettre à l'appelant d'éditer son contenu juste après la greffe.
  */
 export function graftSlide(
   base: Pptx,
   source: Pptx,
   sourceSlideNumber: number,
   position: "prepend" | "append",
-): void {
+): number {
   const sourceSlidePath = `ppt/slides/slide${sourceSlideNumber}.xml`;
   const sourceSlideRels = readRels(source, sourceSlidePath);
   const layoutRel = findRelByTypeSuffix(
@@ -337,4 +340,6 @@ export function graftSlide(
 
   registerMasterInPresentation(base, newMasterNumber);
   registerSlideInPresentation(base, newSlideNumber, position);
+
+  return newSlideNumber;
 }
